@@ -1,0 +1,11 @@
+node_modules
+dist
+.npm-cache
+*.log
+*.db
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+.vite
+server/data

@@ -1,0 +1,19 @@
+{
+  "name": "cyoa-framework",
+  "version": "0.1.0",
+  "description": "A TypeScript framework for building choose-your-own-adventure games with rooms, inventory items, persistent/consumable items, and a backtracking map.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.12",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2",
+    "vitest": "^2.1.9"
+  }
+}
