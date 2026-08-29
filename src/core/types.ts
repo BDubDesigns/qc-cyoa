@@ -92,6 +92,15 @@ export interface ItemDef {
   description: string;
   /** Optional image for the item (URL or data URI). */
   image?: string;
+  /**
+   * Where this loose copy sits in the room it's placed in, as a position on the
+   * room art's 900x400 canvas. Lets the item look like a prop in the scene
+   * (on a shelf, floor, table) that the player has to discover and click.
+   * `scale` is a multipllier on top of the item's natural sprite size; the
+   * default is configured by the renderer. If omitted the item gets a sensible
+   * default placement.
+   */
+  place?: { x: number; y: number; scale?: number };
   /** Optional initial charges; e.g. a lighter with 1 use has charges: 1. */
   charges?: number;
   /**

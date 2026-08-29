@@ -440,6 +440,23 @@ function itemForm(state: StudioState, item: ItemDef, roomId: string): HTMLElemen
     ),
   );
 
+  // Where this loose item sits on the 900x400 room scene (its pickup hotspot).
+  const placeBox = document.createElement("div");
+  placeBox.className = "place-box";
+  placeBox.appendChild(document.createTextNode("Position on the scene (900×400) — the pickup hotspot:"));
+  const setPlace = (patch: Partial<NonNullable<ItemDef["place"]>>) => {
+    updateItem(state, item.id, { place: { x: item.place?.x ?? 450, y: item.place?.y ?? 300, scale: item.place?.scale ?? 1, ...patch } });
+  };
+  const placeRow = document.createElement("div");
+  placeRow.className = "place-row";
+  placeRow.append(
+    field("x", numberInput(String(item.place?.x ?? 450), (n) => setPlace({ x: n }))),
+    field("y", numberInput(String(item.place?.y ?? 300), (n) => setPlace({ y: n }))),
+    field("scale", numberInput(String(item.place?.scale ?? 1), (n) => setPlace({ scale: n }))),
+  );
+  placeBox.appendChild(placeRow);
+  box.appendChild(placeBox);
+
   box.appendChild(subhead("Uses"));
   for (let ui = 0; ui < item.uses.length; ui++) {
     const use = item.uses[ui]!;

@@ -253,43 +253,75 @@ function roomPanel(engine: Engine, room: RoomDef): HTMLElement {
  * disappears from the room). This is always available — even when the pickup
  * buttons are hidden — so there is always a visual, in-world way to collect.
  */
+/**
+ * Loose items rendered as props sitting *in* the scene, at `item.def.place`
+ * (a position on the art's 900x400 canvas). They're not obvious buttons: the
+ * player has to notice them. Mousing over one shows it's a hotspot (pointer +
+ * gentle 110% grow, animated) and reveals its name; clicking it takes it.
+ */
 function itemOverlay(engine: Engine): HTMLElement {
   const overlay = el("div", "item-overlay");
   const aiming = getAim();
-  const picks = engine.roomItemsHere.map((item) => {
-    const chip = el("button", "item-svg");
-    chip.classList.toggle("aimable", aiming?.use.requiresTarget?.type === "item");
+  const here = engine.roomItemsHere;
+  if (!here.length) return overlay;
+
+  const room = engine.currentRoom;
+
+  for (const item of here) {
+    const d = engine.itemsById.get(item.id) ?? item.def;
+    const place = d.place;
+    // Default: stand it ~a third from the bottom, centered-ish, modest size so
+    // it reads as an object on the floor rather than a UI button.
+    const px = place?.x ?? 450;
+    const py = place?.y ?? 300;
+    const scale = place?.scale ?? 1;
+    // Base sprite box (roughly the item SVG's portrait aspect). `scale` picks a
+    // scene-appropriate size; hover grows it to 110%.
+    const baseH = 58;
+    const baseW = Math.round(baseH * (16 / 18)); // 160x180 aspect
+    const w = Math.round(baseW * scale);
+    const h = Math.round(baseH * scale);
+
+    const prop = el("button", "prop item-prop");
+    prop.type = "button";
+    prop.style.left = `${(px / 900) * 100}%`;
+    prop.style.top = `${(py / 400) * 100}%`;
+    prop.style.width = `${w}px`;
+    prop.style.height = `${h}px`;
+    prop.title = d.name;
+    prop.setAttribute("aria-label", `Pick up ${d.name}`);
+    if (room.id) prop.dataset.room = room.id;
+
+    // Hotspot is deliberately roomy (a bounding box) but visually quiet until
+    // hover: the sprite itself plus a faint padding ring.
+    prop.classList.add("hotspot");
+
+    if (d.image) {
+      const img = document.createElement("img");
+      img.src = d.image;
+      img.alt = d.name;
+      img.draggable = false;
+      prop.appendChild(img);
+    }
 
     if (aiming && aiming.use.requiresTarget?.type === "item") {
-      chip.classList.add("target-popper");
+      prop.classList.add("aimable");
+      if (aiming.use.requiresTarget.ref === item.id) prop.classList.add("target-popper");
     }
 
-    if (item.def.image) {
-      const img = document.createElement("img");
-      img.src = item.def.image;
-      img.alt = item.def.name;
-      img.draggable = false;
-      chip.appendChild(img);
-    }
-    const label = el("span", "item-svg-label");
-    label.textContent = item.def.name;
-    chip.appendChild(label);
+    const tag = el("span", "prop-tag");
+    tag.textContent = d.name;
+    prop.appendChild(tag);
 
-    chip.addEventListener("click", () => {
+    prop.addEventListener("click", () => {
       if (aiming && aiming.use.requiresTarget?.type === "item") {
-        // Aiming at an item: click it to run the use.
-        const target: RoomTarget = { type: "item", ref: item.id };
-        applyTargetedUse(engine, aiming, target);
+        applyTargetedUse(engine, aiming, { type: "item", ref: item.id });
         return;
       }
       engine.takeItem(item);
     });
-    return chip;
-  });
 
-  if (picks.length) {
-    overlay.classList.add("has-items");
-    for (const p of picks) overlay.appendChild(p);
+    overlay.appendChild(prop);
   }
   return overlay;
 }

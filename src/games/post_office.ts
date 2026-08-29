@@ -53,6 +53,7 @@ export const postOffice: GameDefinition = {
           description:
             "A heavy crowbar. Good for prying. Keys never wear out; neither does this.",
           image: svg(160, 180, crowbarArt()),
+          place: { x: 285, y: 300, scale: 0.9 }, // leaning against the counter
           uses: [
             {
               label: "Pry open the vault doors",
@@ -122,6 +123,7 @@ export const postOffice: GameDefinition = {
           description:
             "A brass storm lantern, well used. It holds three strikes of fuel and stays with you even after the last one sputters out.",
           image: svg(160, 180, lanternArt()),
+          place: { x: 362, y: 158, scale: 0.8 }, // hanging near the workbench
           charges: 3,
           removableWhenEmpty: false,
           uses: [
@@ -156,6 +158,7 @@ export const postOffice: GameDefinition = {
           name: "Gold Sovereign",
           description: "A fat golden coin, hot to the touch, forgotten in the coal dust.",
           image: svg(160, 180, coinArt()),
+          place: { x: 660, y: 320, scale: 0.7 }, // half-lost in the coal dust
           uses: [
             {
               label: "Count it into your takings",
@@ -185,6 +188,7 @@ export const postOffice: GameDefinition = {
           name: "Parish Ledger",
           description: "The heavy, oilcloth-wrapped parish ledger. This is why you came.",
           image: svg(160, 180, ledgerArt()),
+          place: { x: 300, y: 152, scale: 0.8 }, // sitting on the vault shelf
           uses: [
             {
               label: "Deliver the ledger to safety",

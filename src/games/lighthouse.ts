@@ -46,6 +46,7 @@ export const lighthouse: GameDefinition = {
           description:
             "A heavy brass key stamped with an anchor. It fits the tower door and, once used, stays with you — keys don't wear out.",
           image: art.items.brass_key,
+          place: { x: 210, y: 320, scale: 0.85 }, // lying on the shore path
           uses: [
             {
               label: "Unlock the tower door",
@@ -82,6 +83,7 @@ export const lighthouse: GameDefinition = {
           description:
             "An old brass lighter, scraped bare. You can feel a faint slosh inside — barely enough fuel for a single strike.",
           image: art.items.lighter,
+          place: { x: 250, y: 230, scale: 0.8 }, // on the work bench
           charges: 1,
           uses: [
             {
@@ -132,6 +134,7 @@ export const lighthouse: GameDefinition = {
           name: "Small Strongbox Key",
           description: "A little burnished key that opens the cellar strong-box.",
           image: art.items.strongbox_key,
+          place: { x: 232, y: 148, scale: 0.8 }, // on the cellar shelf
           uses: [
             {
               label: "Open the strong-box",
@@ -173,6 +176,7 @@ export const lighthouse: GameDefinition = {
           name: "Keeper's Manual",
           description: "A damp leather manual on lighting the great lamp.",
           image: art.items.beacon_manual,
+          place: { x: 518, y: 350, scale: 0.85 }, // resting on a stair
           uses: [
             {
               label: "Read the manual",
@@ -202,6 +206,7 @@ export const lighthouse: GameDefinition = {
           name: "Oil Fuel Can",
           description: "A battered can of lighthouse oil. It has just enough to refill the lamp once — then it's empty.",
           image: art.items.fuel_can,
+          place: { x: 730, y: 300, scale: 0.9 }, // beside the lamp on the floor
           charges: 1,
           uses: [
             {

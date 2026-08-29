@@ -77,6 +77,16 @@ export function inspectGame(game: GameDefinition): ValidationIssue[] {
         itemOwners.set(item.id, room.id);
       }
       if (!item.name) bad(`item "${item.id ?? "?"}" has no name`);
+      if (item.place) {
+        if (typeof item.place.x !== "number" || typeof item.place.y !== "number") {
+          bad(`item "${item.id ?? "?"}" has a place with non-numeric x/y`);
+        } else if (item.place.x < 0 || item.place.x > 900 || item.place.y < 0 || item.place.y > 400) {
+          warn(`item "${item.id ?? "?"}" place sits outside the 900x400 scene (${item.place.x}, ${item.place.y})`);
+        }
+        if (item.place.scale !== undefined && item.place.scale <= 0) {
+          bad(`item "${item.id ?? "?"}" place.scale must be positive`);
+        }
+      }
       if (!item.uses || item.uses.length === 0) {
         warn(`item "${item.id ?? "?"}" has no uses (the player can never do anything with it)`);
       }
