@@ -332,6 +332,90 @@ export const itemFuelCan = svg(
 `
 );
 
+/* ------------------------- interactive prop sprites ------------------------ */
+
+export const propSeagull = svg(
+  120,
+  90,
+  `
+  <g transform="translate(20 30)">
+    <ellipse cx="40" cy="10" rx="26" ry="9" fill="#eef1f4"/>
+    <ellipse cx="18" cy="8" rx="12" ry="6" fill="#dfe5ea"/>
+    <circle cx="58" cy="8" r="2.5" fill="#1c1c1e"/>
+    <path d="M30 22 C34 34 48 36 58 26 L58 22 Z" fill="#dfe5ea"/>
+  </g>
+  `
+);
+
+export const propRat = svg(
+  110,
+  90,
+  `
+  <ellipse cx="55" cy="58" rx="20" ry="11" fill="#7d6a55"/>
+  <circle cx="48" cy="40" r="11" fill="#8a7760"/>
+  <circle cx="45" cy="37" r="1.6" fill="#1c1c1e"/>
+  <ellipse cx="38" cy="30" rx="6" ry="3" fill="#c9706b" transform="rotate(-20 38 30)"/>
+  <path d="M70 48 Q92 40 96 30" stroke="#7d6a55" stroke-width="4" fill="none" stroke-linecap="round"/>
+  `
+);
+
+export const propMoustache = svg(
+  160,
+  120,
+  `
+  <g transform="rotate(-8 80 60)">
+    <circle cx="60" cy="60" r="26" fill="none" stroke="#e8dcc0" stroke-width="3"/>
+    <circle cx="60" cy="60" r="19" fill="#1c1c1e"/>
+    <path d="M46 58 Q60 70 74 58 Q60 68 46 58 Z" fill="#c9a13b"/>
+  </g>
+  `
+);
+
+export const propBarrel = svg(
+  130,
+  130,
+  `
+  <path d="M30 20 h70 l10 48 l-10 48 h-70 l-10 -48 Z" fill="#8a5a2b" stroke="#5c3a1b" stroke-width="3"/>
+  <line x1="38" y1="20" x2="38" y2="116" stroke="#5c3a1b" stroke-width="3"/>
+  <line x1="92" y1="20" x2="92" y2="116" stroke="#5c3a1b" stroke-width="3"/>
+  <line x1="26" y1="68" x2="104" y2="68" stroke="#5c3a1b" stroke-width="3"/>
+  `
+);
+
+export const propCrate = svg(
+  130,
+  110,
+  `
+  <rect x="20" y="18" width="90" height="74" fill="#9a6b3a" stroke="#6b4521" stroke-width="3"/>
+  <line x1="20" y1="40" x2="110" y2="40" stroke="#6b4521" stroke-width="3"/>
+  <line x1="20" y1="68" x2="110" y2="68" stroke="#6b4521" stroke-width="3"/>
+  <line x1="65" y1="18" x2="45" y2="92" stroke="#6b4521" stroke-width="3"/>
+  <line x1="65" y1="18" x2="85" y2="92" stroke="#6b4521" stroke-width="3"/>
+  `
+);
+
+export const propFog = svg(
+  160,
+  110,
+  `
+  <g opacity=".85">
+    <ellipse cx="60" cy="66" rx="70" ry="22" fill="#cfd8e0"/>
+    <ellipse cx="110" cy="48" rx="56" ry="18" fill="#dbe2ea"/>
+    <ellipse cx="40" cy="42" rx="40" ry="14" fill="#e6ecf2"/>
+  </g>
+  `
+);
+
+export const propHandrail = svg(
+  160,
+  90,
+  `
+  <path d="M10 30 Q120 10 160 40" stroke="#9c7d45" stroke-width="9" fill="none" stroke-linecap="round"/>
+  <line x1="98" y1="42" x2="110" y2="78" stroke="#9c7d45" stroke-width="6"/>
+  <line x1="140" y1="38" x2="150" y2="74" stroke="#9c7d45" stroke-width="6"/>
+  `
+);
+
 /** Bundle of all artwork keyed by game id for easy wiring. */
 export const art = {
   rooms: {
@@ -348,5 +432,14 @@ export const art = {
     strongbox_key: itemStrongboxKey,
     beacon_manual: itemBeaconManual,
     fuel_can: itemFuelCan,
+  },
+  props: {
+    seagull: propSeagull,
+    rat: propRat,
+    moustache: propMoustache,
+    barrel: propBarrel,
+    crate: propCrate,
+    fog: propFog,
+    handrail: propHandrail,
   },
 };

@@ -64,6 +64,22 @@ export const lighthouse: GameDefinition = {
           ],
         },
       ],
+      interactives: [
+        {
+          id: "seagull",
+          name: "A lone seagull",
+          look: "It regards you with the flat, professional contempt of a bird that has seen a hundred Lighthouse Keepers wash up here and given up being impressed.",
+          place: { x: 240, y: 120, scale: 0.7 },
+          image: art.props.seagull,
+        },
+        {
+          id: "sea",
+          name: "The black sea",
+          look: "The water is the colour of old ink. Somewhere under it, a lighthouse once stood, and then it didn't, and nobody pretended to be surprised about either.",
+          place: { x: 720, y: 300, scale: 0.9 },
+          image: art.props.fog,
+        },
+      ],
     },
     {
       id: "boatshed",
@@ -117,6 +133,22 @@ export const lighthouse: GameDefinition = {
           ],
         },
       ],
+      interactives: [
+        {
+          id: "rat",
+          name: "A very confident rat",
+          look: "It sizes you up, decides you're no threat, and goes back to gnawing on a cork. You respect the hustle.",
+          place: { x: 560, y: 330, scale: 0.8 },
+          image: art.props.rat,
+        },
+        {
+          id: "smells",
+          name: "The tar & fish smell",
+          look: "You inhale deeply. Century-thick tar, a week of fish. Your sinuses file a formal complaint.",
+          place: { x: 360, y: 250, scale: 0.7 },
+          image: art.props.barrel,
+        },
+      ],
     },
     {
       id: "cellar",
@@ -146,6 +178,22 @@ export const lighthouse: GameDefinition = {
           ],
         },
       ],
+      interactives: [
+        {
+          id: "jar",
+          name: "A jar of 'preserved plums'",
+          look: "The label reads 'PRESERVED PLUMS'. Inside are three suspiciously plum-shaped objects that are, on closer inspection, not plums. You decide not to annotate your evening.",
+          place: { x: 260, y: 100, scale: 0.85 },
+          image: art.props.moustache,
+        },
+        {
+          id: "rope",
+          name: "Two coils of new rope",
+          look: "Fresh, dry, suspiciously unused rope in a cellar full of walls you could simply climb. Someone on the island is either a genius or a very thorough procrastinator.",
+          place: { x: 480, y: 200, scale: 0.7 },
+          image: art.props.crate,
+        },
+      ],
     },
     {
       id: "tower_door",
@@ -157,6 +205,15 @@ export const lighthouse: GameDefinition = {
       doors: [
         { direction: "north", to: "spiral_stairs", requiresFlag: "tower_door_unlocked", lockedText: "The iron door is shut and locked." },
         { direction: "south", to: "cliff_path" },
+      ],
+      interactives: [
+        {
+          id: "keyhole",
+          name: "The keyhole",
+          look: "You squint into the lock. It looks back. This door has been through a lot and is not in the mood for conversation.",
+          place: { x: 632, y: 300, scale: 1.0 },
+          image: art.props.moustache,
+        },
       ],
     },
     {
@@ -187,6 +244,15 @@ export const lighthouse: GameDefinition = {
               ],
             },
           ],
+        },
+      ],
+      interactives: [
+        {
+          id: "handrail",
+          name: "The worn handrail",
+          look: "Years of keepers' palms have polished a groove into the wood. You run a hand along it and feel, fleetingly, like the most important janitor on the coast.",
+          place: { x: 520, y: 240, scale: 0.9 },
+          image: art.props.handrail,
         },
       ],
     },

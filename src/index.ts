@@ -8,6 +8,7 @@ export type {
   ItemDef,
   ItemInstance,
   ItemUse,
+  InteractiveDef,
   RoomDef,
   RoomTarget,
 } from "./core/types";

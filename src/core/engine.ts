@@ -154,6 +154,17 @@ export class Engine {
     this.state.lastMessages.push(text);
   }
 
+  /**
+   * Post a one-off line to the message/quote box — e.g. a witty observation
+   * from clicking an interactive prop that isn't pickupable (Monkey Island
+   * style). Changes no game state; the current room and inventory are untouched.
+   */
+  observe(line: string): void {
+    this.resetMessages();
+    this.tell(line);
+    this.emit();
+  }
+
   private makeInstance(def: ItemDef, origin?: string): ItemInstance {
     return {
       def,

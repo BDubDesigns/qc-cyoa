@@ -157,6 +157,26 @@ export interface RoomDef {
   doors: Door[];
   /** Items that start in this room (picked up → removed from room + inventory). */
   items?: ItemDef[];
+  /**
+   * Interactive props that aren't pickupable — the Monkey Island "look at"
+   * gags. Each sits in the scene like an item, hoverable/clickable, and clicking
+   * posts `look` to the message box without changing game state.
+   */
+  interactives?: InteractiveDef[];
+}
+
+/** A decorative, non-pickupable object the player can look at for a line. */
+export interface InteractiveDef {
+  id: string;
+  name: string;
+  /**
+   * The line shown when the player clicks it (a joke, an observation, flavour).
+   */
+  look: string;
+  /** Where on the 900x400 scene it sits, like an item's `place`. */
+  place?: { x: number; y: number; scale?: number };
+  /** Optional sprite; if omitted the prop renders as a small name tag hotspot. */
+  image?: string;
 }
 
 /** How a game is scored, chosen by the author. */

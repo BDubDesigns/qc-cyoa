@@ -179,7 +179,7 @@ function roomPanel(engine: Engine, room: RoomDef): HTMLElement {
     img.loading = "eager";
     art.appendChild(img);
   }
-  art.appendChild(itemOverlay(engine));
+  art.appendChild(propOverlay(engine));
 
   const body = el("div", "room-body");
   const desc = el("p", "room-desc");
@@ -254,65 +254,27 @@ function roomPanel(engine: Engine, room: RoomDef): HTMLElement {
  * buttons are hidden — so there is always a visual, in-world way to collect.
  */
 /**
- * Loose items rendered as props sitting *in* the scene, at `item.def.place`
- * (a position on the art's 900x400 canvas). They're not obvious buttons: the
- * player has to notice them. Mousing over one shows it's a hotspot (pointer +
- * gentle 110% grow, animated) and reveals its name; clicking it takes it.
+ * Everything interactive sitting in the scene: loose items you can pick up,
+ * plus non-pickupable interactive props (the Monkey Island "look at" gags).
+ * None are obvious buttons — the player has to notice them. Mousing over a prop
+ * shows it's a hotspot (pointer + gentle 110% grow, animated) and reveals its
+ * name; clicking a pickupable item takes it, clicking an interactive posts its
+ * `look` line to the quote box.
  */
-function itemOverlay(engine: Engine): HTMLElement {
+function propOverlay(engine: Engine): HTMLElement {
   const overlay = el("div", "item-overlay");
   const aiming = getAim();
-  const here = engine.roomItemsHere;
-  if (!here.length) return overlay;
-
   const room = engine.currentRoom;
 
-  for (const item of here) {
+  for (const item of engine.roomItemsHere) {
     const d = engine.itemsById.get(item.id) ?? item.def;
-    const place = d.place;
-    // Default: stand it ~a third from the bottom, centered-ish, modest size so
-    // it reads as an object on the floor rather than a UI button.
-    const px = place?.x ?? 450;
-    const py = place?.y ?? 300;
-    const scale = place?.scale ?? 1;
-    // Base sprite box (roughly the item SVG's portrait aspect). `scale` picks a
-    // scene-appropriate size; hover grows it to 110%.
-    const baseH = 58;
-    const baseW = Math.round(baseH * (16 / 18)); // 160x180 aspect
-    const w = Math.round(baseW * scale);
-    const h = Math.round(baseH * scale);
-
-    const prop = el("button", "prop item-prop");
-    prop.type = "button";
-    prop.style.left = `${(px / 900) * 100}%`;
-    prop.style.top = `${(py / 400) * 100}%`;
-    prop.style.width = `${w}px`;
-    prop.style.height = `${h}px`;
-    prop.title = d.name;
+    const prop = buildProp(engine, d.name, d.place, d.image, d.id);
+    prop.classList.add("pickup");
     prop.setAttribute("aria-label", `Pick up ${d.name}`);
-    if (room.id) prop.dataset.room = room.id;
-
-    // Hotspot is deliberately roomy (a bounding box) but visually quiet until
-    // hover: the sprite itself plus a faint padding ring.
-    prop.classList.add("hotspot");
-
-    if (d.image) {
-      const img = document.createElement("img");
-      img.src = d.image;
-      img.alt = d.name;
-      img.draggable = false;
-      prop.appendChild(img);
-    }
-
     if (aiming && aiming.use.requiresTarget?.type === "item") {
       prop.classList.add("aimable");
       if (aiming.use.requiresTarget.ref === item.id) prop.classList.add("target-popper");
     }
-
-    const tag = el("span", "prop-tag");
-    tag.textContent = d.name;
-    prop.appendChild(tag);
-
     prop.addEventListener("click", () => {
       if (aiming && aiming.use.requiresTarget?.type === "item") {
         applyTargetedUse(engine, aiming, { type: "item", ref: item.id });
@@ -320,10 +282,62 @@ function itemOverlay(engine: Engine): HTMLElement {
       }
       engine.takeItem(item);
     });
-
+    if (room.id) prop.dataset.room = room.id;
     overlay.appendChild(prop);
   }
+
+  for (const it of room.interactives ?? []) {
+    const prop = buildProp(engine, it.name, it.place, it.image, it.id);
+    prop.classList.add("interactive", "hotspot");
+    prop.setAttribute("aria-label", `Look at ${it.name}`);
+    prop.addEventListener("click", () => engine.observe(it.look));
+    if (room.id) prop.dataset.room = room.id;
+    overlay.appendChild(prop);
+  }
+
   return overlay;
+}
+
+/** Build a single scene prop (positioned sprite + hover name tag). */
+function buildProp(
+  engine: Engine,
+  name: string,
+  place: { x: number; y: number; scale?: number } | undefined,
+  image: string | undefined,
+  key: string,
+): HTMLElement {
+  const px = place?.x ?? 450;
+  const py = place?.y ?? 300;
+  const scale = place?.scale ?? 1;
+  // Base sprite box (roughly the 160x180 item SVG portrait). `scale` picks a
+  // scene-appropriate size; hover grows it to 110%.
+  const baseH = 58;
+  const baseW = Math.round(baseH * (16 / 18));
+  const w = Math.round(baseW * scale);
+  const h = Math.round(baseH * scale);
+
+  const prop = el("button", "prop item-prop");
+  prop.type = "button";
+  prop.style.left = `${(px / 900) * 100}%`;
+  prop.style.top = `${(py / 400) * 100}%`;
+  prop.style.width = `${w}px`;
+  prop.style.height = `${h}px`;
+  if (key) prop.dataset.prop = key;
+
+  if (image) {
+    const img = document.createElement("img");
+    img.src = image;
+    img.alt = name;
+    img.draggable = false;
+    prop.appendChild(img);
+  }
+
+  const tag = el("span", "prop-tag");
+  tag.textContent = name;
+  prop.appendChild(tag);
+
+  void engine;
+  return prop;
 }
 
 function takeCard(engine: Engine, item: ItemInstance): HTMLElement {

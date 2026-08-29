@@ -91,6 +91,20 @@ export function inspectGame(game: GameDefinition): ValidationIssue[] {
         warn(`item "${item.id ?? "?"}" has no uses (the player can never do anything with it)`);
       }
     }
+    for (const it of room.interactives ?? []) {
+      if (!it.id) bad(`room "${room.id}" has an interactive prop with no id`);
+      if (!it.look) warn(`interactive prop "${it.id ?? "?"}" in room "${room.id}" has no look line`);
+      if (it.place) {
+        if (typeof it.place.x !== "number" || typeof it.place.y !== "number") {
+          bad(`interactive prop "${it.id ?? "?"}" in room "${room.id}" has a place with non-numeric x/y`);
+        } else if (it.place.x < 0 || it.place.x > 900 || it.place.y < 0 || it.place.y > 400) {
+          warn(`interactive prop "${it.id ?? "?"}" place sits outside the 900x400 scene (${it.place.x}, ${it.place.y})`);
+        }
+        if (it.place.scale !== undefined && it.place.scale <= 0) {
+          bad(`interactive prop "${it.id ?? "?"}" place.scale must be positive`);
+        }
+      }
+    }
   }
   if (itemIds.size === 0) warn("game has no items at all");
 

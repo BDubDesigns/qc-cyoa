@@ -815,23 +815,12 @@ button:disabled {
   display: block;
   pointer-events: none;
 }
-/* Hotspot: a faint, roomier-than-the-sprite ring so the click box is forgiving
-   while staying visually quiet until the player discovers the item. */
-.prop::before {
-  content: "";
-  position: absolute;
-  inset: -7px;
-  border: 1.5px dashed rgba(232, 177, 79, 0);
-  border-radius: 8px;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-}
+/* Hover: show it's a hotspot via the pointer cursor, a gentle grow to 110%
+   (animated, shrinking back on mouse-out) and the name tag — no visible box. */
 .prop:hover {
   transform: translate(-50%, -50%) scale(1.1);
   z-index: 3;
-}
-.prop:hover::before {
-  border-color: rgba(232, 177, 79, 0.7);
-  box-shadow: 0 0 12px rgba(232, 177, 79, 0.35);
+  filter: drop-shadow(0 0 6px rgba(232, 177, 79, 0.45));
 }
 .prop-tag {
   position: absolute;
@@ -853,12 +842,13 @@ button:disabled {
   opacity: 1;
   transform: translateX(-50%) translateY(-2px);
 }
-.prop.aimable::before {
-  border-color: rgba(232, 177, 79, 0.5);
+/* Aiming at an interactive/pickup prop: a soft glow instead of a box. */
+.prop.aimable img,
+.prop.target-popper img {
+  filter: drop-shadow(0 0 6px rgba(232, 177, 79, 0.6));
 }
-.prop.target-popper::before {
-  border-color: var(--good);
-  box-shadow: 0 0 0 3px rgba(94, 196, 142, 0.4), 0 0 18px rgba(94, 196, 142, 0.55);
+.prop.target-popper img {
+  filter: drop-shadow(0 0 8px rgba(94, 196, 142, 0.85));
 }
 
 /* Aim mode: the target the player is being asked to click highlights. */

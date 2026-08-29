@@ -1,5 +1,5 @@
 import type { GameDefinition } from "../core/types";
-import { svg } from "../art";
+import { art, svg } from "../art";
 
 const POST_WALL = "fill='url(#wall)'";
 
@@ -92,6 +92,22 @@ export const postOffice: GameDefinition = {
           ],
         },
       ],
+      interactives: [
+        {
+          id: "counter_bell",
+          name: "The service bell",
+          look: "Ink-stained, brass, exquisitely wrong. You ring it. Somewhere far away, a postmaster who filed for retirement in 1947 twitches in his sleep.",
+          place: { x: 240, y: 150, scale: 0.8 },
+          image: art.props.moustache,
+        },
+        {
+          id: "mail_bin",
+          name: "The floating mail bin",
+          look: "Unsorted letters bob inside it like tiny panicked swimmers. You resist the urge to declare an emergency and start filing.",
+          place: { x: 390, y: 270, scale: 0.85 },
+          image: art.props.crate,
+        },
+      ],
     },
     {
       id: "sorting_room",
@@ -142,6 +158,22 @@ export const postOffice: GameDefinition = {
           ],
         },
       ],
+      interactives: [
+        {
+          id: "pigeonholes",
+          name: "A wall of pigeonholes",
+          look: "Hundreds of little shelves, each one the cold metal grave of a letter someone once meant to send. You feel personally addressed.",
+          place: { x: 640, y: 150, scale: 0.8 },
+          image: art.props.crate,
+        },
+        {
+          id: "workbench",
+          name: "The workbench",
+          look: "A half-canceled stamp kit, a tin of ink, and a note in a hand you almost recognize: 'Fix the leak. AGAIN.' The leak drips on regardless.",
+          place: { x: 250, y: 210, scale: 0.85 },
+          image: art.props.barrel,
+        },
+      ],
     },
     {
       id: "boiler",
@@ -170,6 +202,22 @@ export const postOffice: GameDefinition = {
               ],
             },
           ],
+        },
+      ],
+      interactives: [
+        {
+          id: "steam",
+          name: "The hissing boiler",
+          look: "It exhales a long, patient sigh of steam. You get the sense it isn't working, only keeping the lights on out of stubbornness.",
+          place: { x: 460, y: 120, scale: 0.85 },
+          image: art.props.fog,
+        },
+        {
+          id: "coal_dust",
+          name: "A drift of coal dust",
+          look: "Blacker than the water out back. A single bootprint at its centre — a size you'd describe, approvingly, as 'sturdy'.",
+          place: { x: 250, y: 330, scale: 0.7 },
+          image: art.props.barrel,
         },
       ],
     },
@@ -203,6 +251,22 @@ export const postOffice: GameDefinition = {
               ],
             },
           ],
+        },
+      ],
+      interactives: [
+        {
+          id: "vault_door",
+          name: "The vault door",
+          look: "A door this heavy should hold a kingdom, not half a century of unopened mail. You push it. It does not move. It doesn't have to.",
+          place: { x: 632, y: 150, scale: 1.05 },
+          image: art.props.barrel,
+        },
+        {
+          id: "shelf_dust",
+          name: "A film of vault dust",
+          look: "You run a finger through it and consider, briefly, the longevity of dust. It has outlived the postmaster, the war, and, you suspect, whoever was supposed to return this ledger.",
+          place: { x: 300, y: 175, scale: 0.7 },
+          image: art.props.seagull,
         },
       ],
     },
