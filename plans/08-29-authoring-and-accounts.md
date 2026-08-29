@@ -1,8 +1,34 @@
 # Author Stories + Accounts — Implementation Plan
 
 **Date:** 2026-08-29
-**Status:** Plan (not yet implemented). Written for handoff to a fresh session.
-**Repo:** `/home/brandon/Projects/cyoa` (TypeScript CYOA framework; **not a git repo yet** — commit before starting).
+**Status:** Partially implemented (see "Session status" below). Original plan follows;
+sections marked "SESSION-CHANGED" reflect decisions made during the implementing session.
+
+> ## Session status (2026-08-29)
+> Repo: `/home/brandon/Projects/cyoa` — now a git repo (baseline commit `4361daa`).
+>
+> **Implemented:** bootstrap (git init + baseline commit); production server (`server/`
+> via bare `node:http` + `node:sqlite`, no Hono/Drizzle); minimal temporary auth
+> (username/password, scrypt-hashed, httpOnly session cookie) behind a swap-ready
+> `AuthService`; the authoring studio (`src/studio/`) wired to the API; play-by-id +
+> registry fallback; browse + account screens; a game loader/router; integration +
+> studio tests (75 total). Typecheck + `npm test` green; `npm run build` green.
+>
+> **How this SESSION-CHANGED the original plan:**
+> - **Sharing is DB-backed by id** (`/?game=<id>` served by the API), NOT the local-first
+>   deflate+base64 embed link from §7 — the embed-link section is dropped. This pulls
+>   M2 (backend+auth) and part of M3 forward.
+> - **Stack is dependency-light:** `node:sqlite` (built-in) instead of Drizzle/better-
+>   sqlite3; bare `node:http` instead of Hono; `node:crypto.scrypt` instead of argon2.
+>   Rationale: the user asked not to over-invest in auth (a better-auth swap is planned),
+>   and native modules avoid native-build risk. The `AuthService`/route/fetch seams are
+>   where Hono/ORM/better-auth slot in later with no studio/game changes.
+> - **Per-user cloud saves, scores, hearts, recommendations (M4) and the local-first
+>   embed link are still deferred.**
+>
+> **Known gaps to close before/with the better-auth swap:** CSRF token on mutations and
+> login/signup rate-limiting are intentionally not implemented (they are better-auth
+> territory); session cookies are `Secure` only when `TRUST_TLS=1`.
 
 ---
 

@@ -1,117 +1,134 @@
+/**
+ * App entry: tiny hash-router that mounts play / studio / browse / account.
+ * The bundled demo games fall back from the registry when the API is down or
+ * the requested id is a shipped demo.
+ */
 import "./styles.css";
-import { Engine } from "../core/engine";
-import type { SavedState } from "../core/engine";
-import { lighthouse } from "../games/lighthouse";
-import { escapeHtml, formatDuration, render, setRestartHandler } from "./render";
+import type { GameDefinition } from "../core/types";
+import { onRouteChange, type Route } from "./router";
+import { loadGameById } from "./registry";
+import { api, ApiError } from "./api";
+import { mountPlay, unmountPlay } from "./play";
+import { mountStudio } from "../studio/studio";
+import { mountBrowse } from "./browse";
+import { mountAccount } from "./account";
+import { navBar } from "./ui";
 
 const root = document.getElementById("root")!;
 
-// In a real app you'd know which game to load (and for which user) from state /
-// routing. Here we demo the lighthouse in-browser.
-const game = lighthouse;
-const STORAGE_KEY = `cyoa:save:${game.id}`;
+let currentCleanup: (() => void) | null = null;
 
-function loadSave(): unknown | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
+async function dispatch(route: Route): Promise<void> {
+  if (currentCleanup) {
+    currentCleanup();
+    currentCleanup = null;
+  }
+
+  switch (route.name) {
+    case "home":
+      renderHome();
+      return;
+    case "play":
+      await mountPlayScreen(route.game);
+      return;
+    case "studio":
+      await mountStudioScreen(route.game);
+      return;
+    case "browse":
+      await mountBrowse(root);
+      return;
+    case "account":
+      await mountAccount(root);
+      return;
   }
 }
 
-function writeSave(engine: Engine): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(engine.serialize()));
-  } catch {
-    // localStorage may be unavailable (private mode / storage disabled).
+async function mountPlayScreen(gameId?: string): Promise<void> {
+  const game = await resolveGame(gameId);
+  if (!game) {
+    renderNotFound();
+    return;
   }
+  root.replaceChildren(navBar("home"));
+  mountPlay(root, game);
+  currentCleanup = () => unmountPlay(root);
 }
 
-function clearSave(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // ignore
+async function mountStudioScreen(gameId?: string): Promise<void> {
+  if (gameId) {
+    try {
+      const detail = await api.getGame(gameId);
+      if (detail.editable || detail.is_published) {
+        await mountStudio(root, { gameId, fromServer: detail.definition });
+        return;
+      }
+    } catch {
+      // fall through to local-draft handling
+    }
   }
+  await mountStudio(root, { gameId });
 }
 
-const saved = loadSave();
-const liveSaved =
-  saved && typeof saved === "object" && (saved as { ended?: unknown }).ended === undefined
-    ? (saved as SavedState)
-    : null;
-
-// Resume an in-progress game if one exists, otherwise start fresh.
-const engine = liveSaved ? Engine.load(game, liveSaved) : new Engine(game);
-
-function paint(): void {
-  root.replaceChildren();
-  render(root, engine);
+async function resolveGame(id?: string): Promise<GameDefinition | null> {
+  if (id) {
+    try {
+      const detail = await api.getGame(id);
+      return detail.definition;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        return loadGameById(id) ?? null;
+      }
+      return loadGameById(id) ?? null;
+    }
+  }
+  return loadGameById("lighthouse") ?? null;
 }
 
-// Persist + re-render on every state change. This is what makes buttons work
-// and keeps the save in sync as the player plays.
-engine.onChange(() => {
-  writeSave(engine);
-  paint();
+function renderHome(): void {
+  root.replaceChildren(
+    navBar("home"),
+    (() => {
+      const sec = document.createElement("section");
+      sec.className = "app-panel panel home-hero";
+      const h = document.createElement("h2");
+      h.textContent = "Choose Your Own Adventure";
+      const p = document.createElement("p");
+      p.textContent =
+        "Author stories in the Studio, publish them, and share a play link. Browse published tales or play a bundled demo.";
+      const links = document.createElement("div");
+      links.className = "home-links";
+      const studio = document.createElement("a");
+      studio.href = "#/studio";
+      studio.className = "primary";
+      studio.textContent = "Author a story →";
+      const browse = document.createElement("a");
+      browse.href = "#/browse";
+      browse.className = "primary ghost";
+      browse.textContent = "Browse stories";
+      links.append(studio, browse);
+      sec.append(h, p, links);
+      return sec;
+    })(),
+  );
+}
+
+function renderNotFound(): void {
+  root.replaceChildren(
+    navBar("home"),
+    (() => {
+      const sec = document.createElement("section");
+      sec.className = "app-panel panel";
+      const h = document.createElement("h2");
+      h.textContent = "Game not found";
+      const a = document.createElement("a");
+      a.href = "#/browse";
+      a.textContent = "Browse stories";
+      sec.append(h, a);
+      return sec;
+    })(),
+  );
+}
+
+onRouteChange((route) => {
+  void dispatch(route);
 });
-
-// Live-ticking timer: re-read the clock and update the status chip in place
-// without re-rendering the whole DOM every second.
-setInterval(() => {
-  const chip = document.getElementById("time-chip");
-  if (chip && !engine.state.ended) {
-    chip.textContent = `⏱ ${formatDuration(engine.elapsedMs)}`;
-  }
-}, 1000);
-
-// "Play again" clears the saved game and reloads to a fresh start.
-setRestartHandler(() => {
-  clearSave();
-  location.reload();
-});
-
-function showIntro(): void {
-  const intro = document.createElement("section");
-  intro.className = "intro panel";
-  intro.innerHTML = `<p>${escapeHtml(game.intro ?? "")}</p>`;
-  if (game.author) {
-    const author = document.createElement("p");
-    author.className = "muted intro-author";
-    author.textContent = `by ${game.author}`;
-    intro.appendChild(author);
-  }
-
-  const begin = document.createElement("button");
-  begin.className = "primary";
-  begin.textContent = `Begin: ${game.title}`;
-  begin.addEventListener("click", () => {
-    intro.remove();
-    paint();
-  });
-  intro.appendChild(begin);
-
-  // If we resumed a saved game, offer to continue it instead of restarting.
-  if (liveSaved) {
-    const resume = document.createElement("button");
-    resume.className = "primary ghost";
-    resume.textContent = "Resume where you left off";
-    resume.addEventListener("click", () => {
-      intro.remove();
-      paint();
-    });
-    intro.appendChild(resume);
-  }
-  root.appendChild(intro);
-}
-
-if (game.intro) {
-  showIntro();
-} else {
-  paint();
-}
-
-// (Optional) expose the engine for debugging / wiring a save button in devtools.
-(window as unknown as { __engine?: Engine }).__engine = engine;

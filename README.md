@@ -47,11 +47,34 @@ a complete demo game, *The Abandoned Lighthouse*, that exercises every feature.
 
 ```bash
 npm install
-npm run dev      # open http://localhost:5173 to play the demo game
-npm test         # run the test suite (Vitest)
-npm run test:watch  # re-run tests as you edit
-npm run build    # production build to ./dist
+
+# Terminal 1 — the API + SQLite backend (stores authored stories, accounts)
+npm run dev:api        # http://127.0.0.1:8787  (nodemon-free; rerun to restart)
+
+# Terminal 2 — the frontend (proxies /api to the backend)
+npm run dev            # open http://localhost:5173
+
+npm test               # run the full test suite (Vitest)
+npm run typecheck      # strict TS check for src + server
+npm run build          # production build to ./dist
 ```
+
+## Author, publish, and share a story
+
+Open `http://localhost:5173`, use the **Account** page to sign up, then head to
+the **Studio**. There you can build a story with a structured editor (game meta,
+rooms, doors, items, and an effects builder), with **live preview** on the right
+and a **validation rail** (errors block publishing). Hit **Publish** and your
+story is stored in the SQLite database; **copy the play link** (`…/?game=<id>`)
+and share it — readers open it and play straight from the server.
+
+- Publishing/cloud storage needs a (temporary, test-only) account; later it will
+  move to better-auth.
+- The bundled demo games (`lighthouse`, `post_office`) are always available and
+  play offline even if the API is down.
+- Auth today is minimal username/password (scrypt-hashed) behind a swappable
+  `AuthService`; CSRF and rate-limiting are intentionally deferred to the
+  better-auth swap.
 
 ## How a game is defined
 
@@ -228,6 +251,12 @@ are validated in the test suite so a regression fails CI.
 ## Project layout
 
 ```
+server/                  # Node API (bare node:http + node:sqlite)
+  index.ts               # router + listener (PORT 8787)
+  db.ts                  # SQLite schema/helpers (node:sqlite)
+  auth-service.ts        # AuthService seam + credentials/session impl
+  password.ts            # scrypt hashing (temporary, pre-better-auth)
+  routes/ auth.ts games.ts json.ts
 src/
   core/
     types.ts      # GameDefinition, RoomDef, ItemDef, Door, ItemUse, GameEffect
@@ -238,15 +267,25 @@ src/
     lighthouse.ts # Demo game #1: "The Abandoned Lighthouse" (points-scored)
     post_office.ts# Demo game #2: "The Flooded Post Office" (time-scored)
   web/
-    main.ts       # bootstrap, intro, localStorage autosave/resume, live timer
+    main.ts       # hash router -> play/studio/browse/account
+    api.ts        # FE fetch client (the only API touchpoint)
+    router.ts     # tiny hash router + play/studio URL builders
+    registry.ts   # bundled demo games (offline fallback)
+    play.ts       # play screen (autosave/resume/timer)
+    browse.ts     # published + demo games listing
+    account.ts    # temporary login/signup + my-games
     render.ts     # room view, room items to take, inventory, map, ended screen
-    styles.css    # theming
-    index.html    # served by Vite
+    styles.css    # theming (incl. studio + nav)
+  studio/
+    state.ts      # runtime-safe draft buffer helpers (pure, tested)
+    studio.ts     # two-pane authoring editor (forms + live preview + rail)
 tests/
   smoke.test.ts   # lighthouse walkthrough: pickup, win & lose, save/resume
   engine.test.ts  # engine unit tests: nav, items, effects, serialize, map
   validate.test.ts# author-time validation (validateGame / inspectGame)
   games.test.ts   # both demo games: connectivity + post_office mechanics
+  server.test.ts  # API integration: auth round-trip, games CRUD, ownership
+  studio.test.ts  # draft-buffer helper logic
   helpers.ts      # tiny game builders for the engine unit tests
 ```
 
