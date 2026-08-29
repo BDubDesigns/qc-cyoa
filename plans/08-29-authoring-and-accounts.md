@@ -29,6 +29,13 @@ sections marked "SESSION-CHANGED" reflect decisions made during the implementing
 > **Known gaps to close before/with the better-auth swap:** CSRF token on mutations and
 > login/signup rate-limiting are intentionally not implemented (they are better-auth
 > territory); session cookies are `Secure` only when `TRUST_TLS=1`.
+>
+> **Follow-up session (post-commit `c138aed`):** player interaction upgraded —
+> items are picked up by clicking them on the room art (a per-game toggle can hide the
+> pickup-button row), and item-uses can require a **target** (`ItemUse.requiresTarget`:
+> a locked door or a loose item) that must be clicked in the player's **current room**;
+> `unlockExit` no longer opens a door from a different room. `useItem(instance, use,
+> target?)` enforces this; `Engine.aimableTargets` lists current-room targets.
 
 ---
 
