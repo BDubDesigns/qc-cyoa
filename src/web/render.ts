@@ -58,9 +58,79 @@ export function setPlayRedraw(fn: (() => void) | null): void {
 export function getAim(): Aim | null {
   return aim;
 }
+
+/**
+ * A targeted use is "grabbed": the item rides a floating indicator that follows
+ * the cursor. Clicking a valid target applies the use; clicking anywhere else
+ * drops it back into the inventory (cancels). This replaces the old multi-tap
+ * "arm then click" flow.
+ */
+let grabIndicator: HTMLElement | null = null;
+let grabMove: ((e: MouseEvent) => void) | null = null;
+let grabCancel: ((e: MouseEvent) => void) | null = null;
+
+function positionGrab(e: MouseEvent): void {
+  if (!grabIndicator || !redraw) return;
+  grabIndicator.style.left = `${e.clientX}px`;
+  grabIndicator.style.top = `${e.clientY}px`;
+}
+
+function detachGrab(): void {
+  if (grabMove) document.removeEventListener("mousemove", grabMove);
+  if (grabCancel) document.removeEventListener("click", grabCancel, true);
+  grabMove = null;
+  grabCancel = null;
+  if (grabIndicator) {
+    grabIndicator.remove();
+    grabIndicator = null;
+  }
+}
+
 export function aimAt(a: Aim | null): void {
+  detachGrab();
+
+  if (!a) {
+    aim = null;
+    redraw?.();
+    return;
+  }
   aim = a;
   redraw?.();
+
+  // A small floating representation of the grabbed item that follows the mouse.
+  grabIndicator = document.createElement("div");
+  grabIndicator.className = "grab-follow pointer-none";
+  const img = document.createElement("span");
+  img.className = "grab-img";
+  img.textContent = a.instance.def.image ? "" : a.use.label;
+  if (a.instance.def.image) {
+    const im = document.createElement("img");
+    im.src = a.instance.def.image;
+    im.alt = a.instance.def.name;
+    img.appendChild(im);
+  }
+  const label = document.createElement("span");
+  label.className = "grab-label";
+  label.textContent = a.instance.def.name;
+  grabIndicator.append(img, label);
+  document.body.appendChild(grabIndicator);
+
+  grabMove = positionGrab;
+  document.addEventListener("mousemove", grabMove);
+
+  // Click anywhere that isn't a valid target drops the item back to inventory
+  // and swallows the click (so you don't accidentally pick up/toggle whatever
+  // you clicked on while you were carrying the thing).
+  grabCancel = (e: MouseEvent) => {
+    const t = e.target as HTMLElement | null;
+    if (t && (t.closest(".target-popper") || t.closest(".aimable"))) {
+      // A valid target's own click handler applies the use.
+      return;
+    }
+    e.stopImmediatePropagation();
+    aimAt(null);
+  };
+  document.addEventListener("click", grabCancel, true);
 }
 
 /** Pickup-buttons preference, persisted per game id. Defaults to ON. */
@@ -200,7 +270,7 @@ function roomPanel(engine: Engine, room: RoomDef): HTMLElement {
   const aiming = getAim();
   if (aiming) {
     const banner = el("div", "notice aiming");
-    banner.textContent = `Aiming ${aiming.use.label} — click the ${aiming.use.description || "thing you want to use it on"}.`;
+    banner.textContent = `Holding the ${aiming.instance.def.name} — click a highlighted target to ${aiming.use.label.toLowerCase()} it, or click anywhere empty to put it away.`;
     body.appendChild(banner);
   }
 
@@ -432,7 +502,13 @@ function inventoryPanel(engine: Engine): HTMLElement {
 
 function itemCard(engine: Engine, instance: ItemInstance): HTMLElement {
   const card = el("div", "item-card");
-  const top = el("div", "item-top");
+  const aiming = getAim();
+  const thisAimActive = aiming?.instance === instance;
+  const targetedUsed: ItemUse[] = engine
+    .availableUses(instance)
+    .filter((u) => u.requiresTarget);
+
+  const top = el("button", "item-top grab-target");
   if (instance.def.image) {
     const img = document.createElement("img");
     img.src = instance.def.image;
@@ -442,6 +518,22 @@ function itemCard(engine: Engine, instance: ItemInstance): HTMLElement {
   const name = el("div", "item-name");
   name.textContent = instance.def.name;
   top.appendChild(name);
+  top.type = "button";
+
+  // Clicking the item itself picks it up into your hand (attaches to the
+  // cursor). It grabs with the first targeted use; the specific-use chips below
+  // let you choose a different target intent first.
+  const grabUse = targetedUsed.length > 0 && !instance.def.charges ? targetedUsed[0]! : undefined;
+  top.title = grabUse ? "Pick up to use it (attaches to your pointer)." : "Undo / drop.";
+  if (grabUse) {
+    top.classList.add("grabbable");
+    if (thisAimActive && aiming?.use === grabUse) top.classList.add("in-hand");
+    top.addEventListener("click", () => {
+      aimAt(aiming && thisAimActive && aiming.use === grabUse ? null : { instance, use: grabUse });
+    });
+  } else if (thisAimActive) {
+    top.classList.add("in-hand");
+  }
   card.appendChild(top);
 
   const badge = el("div", "item-sub");
@@ -450,34 +542,40 @@ function itemCard(engine: Engine, instance: ItemInstance): HTMLElement {
   } else if (instance.def.charges !== undefined && instance.charges <= 0) {
     badge.textContent = "Empty";
   } else {
-    badge.textContent = "Usable";
+    badge.textContent = targetedUsed.length ? "Carry it" : "Usable";
   }
   card.appendChild(badge);
 
   const buttons = el("div", "item-uses");
-  const aiming = getAim();
-  const thisAimActive = aiming?.instance === instance;
-
+  const targetedCount = targetedUsed.length;
   for (const use of engine.availableUses(instance)) {
-    const b = el("button", "item-use");
-    b.textContent = use.label;
-    b.title = use.description;
-
     if (use.requiresTarget) {
-      // Targeted use: clicking arms it (aim mode) rather than running it.
-      b.classList.add("aimable");
-      b.classList.toggle("active-aim", thisAimActive && aiming?.use === use);
-      b.addEventListener("click", () => {
-        aimAt(aiming?.use === use ? null : { instance, use });
+      // With one targeted use, clicking the item already grabs it, so the chip
+      // would be a redundant "use" button. Show the per-intent chips only when
+      // there are several target uses to choose between.
+      if (targetedCount <= 1) continue;
+      const c = el("button", "item-use grab-chip");
+      c.textContent = use.label;
+      c.title = `Carry the ${instance.def.name} and click its target: ${use.description}`;
+      c.classList.toggle("active-aim", thisAimActive && aiming?.use === use);
+      c.addEventListener("click", () => {
+        aimAt(aiming && thisAimActive && aiming.use === use ? null : { instance, use });
       });
+      buttons.appendChild(c);
     } else {
-      if (thisAimActive) b.classList.add("aimable");
-      b.addEventListener("click", () => {
-        if (aiming) aimAt(null);
-        engine.useItem(instance, use);
-      });
+      const b = el("button", "item-use");
+      b.textContent = use.label;
+      b.title = use.description;
+      if (!thisAimActive) {
+        b.addEventListener("click", () => {
+          engine.useItem(instance, use);
+        });
+      } else {
+        b.disabled = true; // already holding the item; drop it first
+        b.title = "You're holding this item — click its target or drop it.";
+      }
+      buttons.appendChild(b);
     }
-    buttons.appendChild(b);
   }
 
   card.appendChild(buttons);

@@ -9,7 +9,7 @@
 import { Engine } from "../core/engine";
 import type { SavedState } from "../core/engine";
 import type { GameDefinition } from "../core/types";
-import { escapeHtml, formatDuration, render, setRestartHandler, setPlayRedraw } from "./render";
+import { escapeHtml, formatDuration, render, setRestartHandler, setPlayRedraw, aimAt } from "./render";
 
 export function mountPlay(root: HTMLElement, game: GameDefinition): void {
   const STORAGE_KEY = `cyoa:save:${game.id}`;
@@ -145,6 +145,7 @@ export function unmountPlay(root: HTMLElement): void {
   const node = root as unknown as { __cyoaTeardown?: () => void };
   node.__cyoaTeardown?.();
   delete node.__cyoaTeardown;
+  aimAt(null); // drop any grabbed item back / detach the cursor follower
   setRestartHandler(null);
   setPlayRedraw(null);
 }

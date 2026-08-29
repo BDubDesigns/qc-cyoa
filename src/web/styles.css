@@ -874,6 +874,79 @@ button.aimable.active-aim {
   font-style: italic;
 }
 
+/* Grab-and-drop: the item is carried by the cursor until you drop it on a
+   target (apply) or on empty space (back to inventory). */
+.item-top.grabbable {
+  cursor: grab;
+  border: 1px dashed transparent;
+  border-radius: 8px;
+  padding: 4px;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  width: 100%;
+}
+.item-top.grabbable:hover {
+  cursor: grab;
+  border-color: var(--accent);
+  background: rgba(232, 177, 79, 0.06);
+}
+.item-top.grabbable:active {
+  cursor: grabbing;
+}
+.item-top.grabbable.in-hand {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, #3a3350, transparent);
+}
+.item-use.grab-chip {
+  border-style: dashed;
+  color: var(--accent);
+}
+.item-use.grab-chip.active-aim {
+  border-style: solid;
+  background: linear-gradient(180deg, #3a3350, var(--panel-2));
+  color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(232, 177, 79, 0.25);
+}
+.grab-follow {
+  position: fixed;
+  z-index: 999;
+  pointer-events: none;
+  transform: translate(-50%, -120%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+}
+.grab-img {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 14, 20, 0.92);
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  padding: 4px;
+}
+.grab-img img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.grab-label {
+  background: rgba(10, 14, 20, 0.92);
+  border: 1px solid var(--accent-2);
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-size: 0.68rem;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.pointer-none {
+  pointer-events: none;
+}
+
 /* Studio: item scene-placement editor. */
 .place-box {
   margin: 2px 0 10px;
