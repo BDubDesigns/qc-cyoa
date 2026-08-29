@@ -198,10 +198,14 @@ a user, key saves by `game.id + user.id`, and store `SavedState` server-side.
 
 ## Picking up & aimed item uses
 
-- **Pick items by clicking them on the room art** — each loose item renders as a
-  clickable SVG on the scene and disappears when taken. The "You can take"
-  button row below can be toggled off from the play screen to make a story
-  harder / more exploratory (the on-art click always works).
+- **Pick items by clicking them on the room art.** Each loose item is a *prop
+  sitting in the scene* (positioned via `ItemDef.place` at a point on the room's
+  900×400 art), not an obvious button — you have to notice it. Mousing over a
+  prop shows it's a hotspot (pointer cursor, a faint dashed ring, a name tag) and
+  gently grows it to 110% (animated, shrinking back on mouse-out); clicking its
+  bounding box takes it. The "You can take" button row below can be toggled off
+  from the play screen to make a story harder / more exploratory — the on-art
+  prop click always works.
 - **Targeted uses (aim-then-click):** a use can declare `requiresTarget`
   (`{ type: "door", ref: <direction> }` or `{ type: "item", ref: <itemId> }`).
   Such a use can only be executed against something in the **current room** —
