@@ -57,6 +57,7 @@ export const postOffice: GameDefinition = {
             {
               label: "Pry open the vault doors",
               description: "Work the crowbar into the seam of the sorting-room vault doors.",
+              requiresTarget: { type: "door", ref: "south" },
               effects: [
                 {
                   type: "message",
@@ -73,6 +74,7 @@ export const postOffice: GameDefinition = {
             {
               label: "Pry open the boiler-room grate",
               description: "Wedge the crowbar under the riveted grate to the boiler room.",
+              requiresTarget: { type: "door", ref: "north" },
               effects: [
                 {
                   type: "message",

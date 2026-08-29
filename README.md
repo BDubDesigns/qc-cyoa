@@ -196,6 +196,19 @@ rooms, and timing. This is the hook on which login, per-user saves, and "heart
 or hate / recommend to a friend / author your own" features can build: identify
 a user, key saves by `game.id + user.id`, and store `SavedState` server-side.
 
+## Picking up & aimed item uses
+
+- **Pick items by clicking them on the room art** — each loose item renders as a
+  clickable SVG on the scene and disappears when taken. The "You can take"
+  button row below can be toggled off from the play screen to make a story
+  harder / more exploratory (the on-art click always works).
+- **Targeted uses (aim-then-click):** a use can declare `requiresTarget`
+  (`{ type: "door", ref: <direction> }` or `{ type: "item", ref: <itemId> }`).
+  Such a use can only be executed against something in the **current room** —
+  click the item's use to arm it, then click the matching lock/item. This stops
+  "unlock the door from anywhere": you must be in the room with the lock.
+  Non-targeted uses run directly from the inventory as before.
+
 ## Item consumption rules
 
 An item can behave as persistent, one-shot, or charge-limited, depending on two

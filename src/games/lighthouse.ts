@@ -50,6 +50,7 @@ export const lighthouse: GameDefinition = {
             {
               label: "Unlock the tower door",
               description: "Turn the key in the iron lock of the tower door.",
+              requiresTarget: { type: "door", ref: "north" },
               effects: [
                 {
                   type: "unlockExit",

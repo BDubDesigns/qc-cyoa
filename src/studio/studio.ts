@@ -35,8 +35,9 @@ import {
   updateEffect,
   allRooms,
   allItemIds,
+  itemForId,
 } from "./state";
-import { render as renderPreview } from "../web/render";
+import { render as renderPreview, setPlayRedraw } from "../web/render";
 
 export interface StudioOptions {
   /** Bind to an existing draft's id (localStorage or DB). */
@@ -182,6 +183,9 @@ export async function mountStudio(root: HTMLElement, opts: StudioOptions): Promi
   }
 
   editHandler = onEdit;
+  // The live-preview pane is itself a playtest surface: wire aim / pickup
+  // interactions to re-render it through the same render module.
+  setPlayRedraw(refresh);
 
   playtestBtn.addEventListener("click", () => openPlaytest(state.game, "Playtest"));
   publishBtn.addEventListener("click", () => {
@@ -448,6 +452,7 @@ function itemForm(state: StudioState, item: ItemDef, roomId: string): HTMLElemen
         "Charges per use (0/blank = none)",
         numberInput(use.chargesPerUse !== undefined && use.chargesPerUse > 0 ? String(use.chargesPerUse) : "0", (n) => updateUse(state, item.id, ui, { chargesPerUse: n || undefined })),
       ),
+      field("Aim it at (leave blank to use directly)", targetSelect(state, item.id, ui)),
     );
 
     useBox.appendChild(subhead("Effects"));
@@ -563,7 +568,76 @@ function selectItem(state: StudioState, value: string, onChange: (id: string) =>
   return sel;
 }
 
-/* ------------------------------- input helpers --------------------------- */
+/**
+ * Editor control for a use's `requiresTarget` (aim-it-at-this). A kind dropdown
+ * (none / a door / a loose item) plus, when a kind is chosen, a control to pick
+ * the target's ref (door direction, or item id).
+ */
+function targetSelect(state: StudioState, itemId: string, ui: number): HTMLElement {
+  const item = itemForId(state, itemId)?.item;
+  const current = item?.uses[ui]?.requiresTarget;
+
+  const wrap = document.createElement("div");
+  wrap.className = "target-select";
+
+  const kind = document.createElement("select");
+  kind.name = `${itemId}.use${ui}.target.kind`;
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = "— no target, use instantly —";
+  none.selected = !current;
+  const door = document.createElement("option");
+  door.value = "door";
+  door.textContent = "a locked door";
+  door.selected = current?.type === "door";
+  const loose = document.createElement("option");
+  loose.value = "item";
+  loose.textContent = "a loose item";
+  loose.selected = current?.type === "item";
+  kind.append(none, door, loose);
+  wrap.appendChild(kind);
+
+  if (current?.type === "door") {
+    const ref = textInput("target.door", current.ref, (v) =>
+      updateUse(state, itemId, ui, { requiresTarget: { type: "door", ref: v } }),
+    );
+    ref.placeholder = "door direction, e.g. north";
+    wrap.appendChild(ref);
+  } else if (current?.type === "item") {
+    const ref = document.createElement("select");
+    const itemIds = allItemIds(state);
+    if (itemIds.length === 0) {
+      const no = document.createElement("option");
+      no.value = "";
+      no.textContent = "(no items yet — add one first)";
+      ref.appendChild(no);
+    }
+    for (const id of itemIds) {
+      const o = document.createElement("option");
+      o.value = id;
+      o.textContent = id;
+      o.selected = id === current.ref;
+      ref.appendChild(o);
+    }
+    ref.addEventListener("change", () => {
+      updateUse(state, itemId, ui, { requiresTarget: { type: "item", ref: ref.value } });
+      editHandler();
+    });
+    wrap.appendChild(ref);
+  }
+
+  kind.addEventListener("change", () => {
+    const next =
+      kind.value === "door"
+        ? { type: "door" as const, ref: "north" }
+        : kind.value === "item"
+          ? { type: "item" as const, ref: allItemIds(state)[0] ?? "" }
+          : undefined;
+    updateUse(state, itemId, ui, { requiresTarget: next });
+    editHandler();
+  });
+  return wrap;
+}
 
 function textInput(name: string, value: string, onChange: (v: string) => void): HTMLInputElement {
   const input = document.createElement("input");

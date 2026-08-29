@@ -21,11 +21,18 @@ describe("manual pickup", () => {
 });
 
 describe("persistent key", () => {
-  it("stays in the inventory after being used", () => {
+  it("stays in the inventory after being used to unlock a door in the same room", () => {
     const e = new Engine(lighthouse);
     e.takeItem(here(e, "brass_key")!);
     const brass = find(e, "brass_key")!;
-    e.useItem(brass, brass.def.uses.find((u) => u.label.includes("Unlock"))!);
+    const unlock = brass.def.uses.find((u) => u.label.includes("Unlock"))!;
+
+    // The lock is on the tower door; the key must be aimed at it from the
+    // tower door room (not from the start).
+    e.tryMove(e.currentRoom.doors.find((d) => d.to === "tower_door")!);
+    expect(e.state.currentRoomId).toBe("tower_door");
+
+    e.useItem(brass, unlock, { type: "door", ref: "north" });
     expect(find(e, "brass_key")).toBeDefined();
     expect(e.isUnlocked(e.game.rooms.find((r) => r.id === "tower_door")!.doors[0]!)).toBe(true);
   });
@@ -35,16 +42,19 @@ describe("full win path", () => {
   it("reaches the beacon, fuels it, and lights it for a win + 100 points", () => {
     const e = new Engine(lighthouse);
     e.takeItem(here(e, "brass_key")!);
-    let brass = find(e, "brass_key")!;
-    e.useItem(brass, brass.def.uses[0]!);
+    const brass = find(e, "brass_key")!;
+    const unlock = brass.def.uses.find((u) => u.label.includes("Unlock"))!;
 
+    // Collect the lighter first (in the boatshed), then go round to the tower
+    // door and aim the key at its lock from that room.
     e.tryMove(e.currentRoom.doors.find((d) => d.to === "boatshed")!);
     e.takeItem(here(e, "lighter")!);
     expect(find(e, "lighter")).toBeDefined();
 
-    // Back out and climb up through the now-unlocked tower door.
     e.tryMove(e.currentRoom.doors.find((d) => d.to === "cliff_path")!);
     e.tryMove(e.currentRoom.doors.find((d) => d.to === "tower_door")!);
+    e.useItem(brass, unlock, { type: "door", ref: "north" });
+
     e.tryMove(e.currentRoom.doors.find((d) => d.to === "spiral_stairs")!);
     e.tryMove(e.currentRoom.doors.find((d) => d.to === "beacon_room")!);
     expect(e.state.currentRoomId).toBe("beacon_room");

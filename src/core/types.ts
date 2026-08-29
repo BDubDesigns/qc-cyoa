@@ -33,8 +33,19 @@ export type GameEffect =
 export interface ItemUse {
   /** Button label / command verb, e.g. "Open the door". */
   label: string;
-  /** Description of what contextual targets it applies to (shown to player). */
+  /**
+   * Description of what contextual targets it applies to (shown to player).
+   * When `requiresTarget` is set this explains what to aim at (e.g. "the
+   * lock on the tower door").
+   */
   description: string;
+  /**
+   * A thing in the CURRENT room this use must be aimed at before it can run.
+   * The player clicks the use (arms it) and then clicks the matching object in
+   * the room. If unset, the use runs directly from the inventory. This is what
+   * prevents "unlock the door from anywhere" — the target must be right here.
+   */
+  requiresTarget?: RoomTarget;
   /**
    * Effects to run when used. May reference the *current* room through the
    * engine's `this` context (see `ItemUseHandler`).
@@ -54,6 +65,19 @@ export interface ItemUse {
    */
   requiresFlag?: string;
   requireValue?: boolean | string | number;
+}
+
+/**
+ * A thing inside a room that a targeted item-use can be aimed at. Two kinds:
+ *  - a door (by its `direction` label), e.g. the lock on the north exit;
+ *  - a loose item lying in the room (by its item `id`), e.g. a strong-box.
+ * The engine requires the referenced object to actually be present in the
+ * player's CURRENT room before the use can run.
+ */
+export interface RoomTarget {
+  type: "door" | "item";
+  /** For `door`: the door's `direction`. For `item`: the item def `id`. */
+  ref: string;
 }
 
 /**

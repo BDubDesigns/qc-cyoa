@@ -6,7 +6,7 @@
 import { Engine } from "../core/engine";
 import type { SavedState } from "../core/engine";
 import type { GameDefinition } from "../core/types";
-import { escapeHtml, formatDuration, render, setRestartHandler } from "./render";
+import { escapeHtml, formatDuration, render, setRestartHandler, setPlayRedraw } from "./render";
 
 export function mountPlay(root: HTMLElement, game: GameDefinition): void {
   const STORAGE_KEY = `cyoa:save:${game.id}`;
@@ -49,6 +49,9 @@ export function mountPlay(root: HTMLElement, game: GameDefinition): void {
     root.replaceChildren();
     render(root, engine);
   }
+
+  // Aim-mode and pickup-button toggles re-render through this hook.
+  setPlayRedraw(paint);
 
   engine.onChange(() => {
     writeSave(engine);
@@ -118,4 +121,5 @@ export function unmountPlay(root: HTMLElement): void {
   if (Number.isFinite(t)) clearInterval(t);
   delete root.dataset.playTimer;
   setRestartHandler(null);
+  setPlayRedraw(null);
 }

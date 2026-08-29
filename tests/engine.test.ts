@@ -100,7 +100,7 @@ describe("using items", () => {
   });
 
   it("removes a one-shot item (consumes) on use", () => {
-    const potion = item("potion", "Potion", [{ type: "message", text: "gulp" }], { uses: [] });
+    const potion = item("potion", "Potion", [{ type: "message", text: "gulp" }], {}, { uses: [] });
     potion.uses = [{ label: "Drink", description: "x", consumes: true, effects: [{ type: "message", text: "gulp" }] }];
     const e = new Engine(roomWithItems([potion]));
     e.takeItem(e.roomItemsHere[0]!);
@@ -159,7 +159,7 @@ describe("effects", () => {
       { type: "setItemCharges", itemId: "b", charges: 7 },
       { type: "destroyItem", itemId: "b" },
     ]);
-    const b = item("b", "B", [{ type: "message", text: "x" }], { charges: 1 });
+    const b = item("b", "B", [{ type: "message", text: "x" }], {}, { charges: 1 });
     const e = new Engine(roomWithItems([a, b]));
     const ai = e.roomItemsHere.find((i) => i.id === "a")!;
     const bi = e.roomItemsHere.find((i) => i.id === "b")!;
@@ -169,11 +169,15 @@ describe("effects", () => {
     expect(find(e, "b")).toBeUndefined();
   });
 
-  it("unlockExit opens a locked door in another room", () => {
+  it("a targeted unlock requires the player to be in the door's room", () => {
+    // The lock is in `doorway`; the key is first found in `start`. Using it
+    // from `start` must fail until the player walks to `doorway`.
     const g = makeGame({
       rooms: [
-        { id: "start", name: "Start", description: "s", doors: [], items: [
-          item("key", "Key", [{ type: "unlockExit", roomId: "doorway", direction: "north", message: "click" }]),
+        { id: "start", name: "Start", description: "s", doors: [{ direction: "north", to: "doorway" }], items: [
+          item("key", "Key", [{ type: "unlockExit", roomId: "doorway", direction: "north", message: "click" }], {
+            requiresTarget: { type: "door", ref: "north", },
+          }),
         ] },
         { id: "doorway", name: "Doorway", description: "d", doors: [{ direction: "north", to: "end", requiresFlag: "open" }] },
         { id: "end", name: "End", description: "e", doors: [] },
@@ -181,25 +185,98 @@ describe("effects", () => {
     });
     const e = new Engine(g);
     e.takeItem(e.roomItemsHere[0]!);
-    e.useItem(find(e, "key")!, find(e, "key")!.def.uses[0]!);
+    const key = find(e, "key")!;
+    const use = key.def.uses[0]!;
     const doorway = g.rooms.find((r) => r.id === "doorway")!;
+
+    // Aiming a targeted use without clicking a target is refused.
+    expect(e.useItem(key, use).ok).toBe(false);
+    expect(e.state.lastMessages.join(" ")).toMatch(/aim/i);
+
+    // Aiming the wrong door is refused.
+    expect(e.useItem(key, use, { type: "door", ref: "south" }).ok).toBe(false);
+
+    // The lock door isn't in this room yet, so aiming it fails.
+    const far = e.useItem(key, use, { type: "door", ref: "north" });
+    expect(far.ok).toBe(false);
+    expect(e.isUnlocked(doorway.doors[0]!)).toBe(false);
+
+    // Walk to the room that contains the lock, aim, and unlock works.
+    e.tryMove(e.availableExits[0]!);
+    expect(e.useItem(key, use, { type: "door", ref: "north" }).ok).toBe(true);
     expect(e.isUnlocked(doorway.doors[0]!)).toBe(true);
+    expect(e.state.lastMessages.join(" ")).toMatch(/click/);
   });
 
-  it("unlockExit reports a door that's already open", () => {
+  it("aimableTargets lists the doors and loose items in the current room", () => {
     const g = makeGame({
       rooms: [
-        { id: "start", name: "Start", description: "s", doors: [], items: [
+        {
+          id: "start",
+          name: "Start",
+          description: "s",
+          doors: [{ direction: "north", to: "end", requiresFlag: "unlocked" }],
+          items: [item("tool", "Tool", [{ type: "message", text: "x" }])],
+        },
+        { id: "end", name: "End", description: "e", doors: [] },
+      ],
+    });
+    const e = new Engine(g);
+    const targets = e.aimableTargets;
+    expect(targets).toContainEqual({ type: "door", ref: "north" });
+    expect(targets).toContainEqual({ type: "item", ref: "tool" });
+  });
+
+  it("a targeted item-use can be aimed at a loose item in the room", () => {
+    // A lockable strong-box modeled as an item target.
+    const g = makeGame({
+      rooms: [
+        {
+          id: "cellar",
+          name: "Cellar",
+          description: "s",
+          doors: [],
+          items: [
+            { id: "strongbox", name: "Strong-box", description: "locked", uses: [] },
+            item(
+              "key",
+              "Key",
+              [
+                { type: "message", text: "The strong-box clicks open." },
+                { type: "setFlag", flag: "box_open", value: true },
+              ],
+              { requiresTarget: { type: "item", ref: "strongbox" } },
+            ),
+          ],
+        },
+      ],
+    });
+    const e = new Engine(g);
+    e.takeItem(e.roomItemsHere.find((i) => i.id === "key")!);
+    const key = find(e, "key")!;
+    const use = key.def.uses[0]!;
+
+    // Refusing a non-present target.
+    expect(e.useItem(key, use, { type: "item", ref: "missing" }).ok).toBe(false);
+    expect(e.useItem(key, use, { type: "item", ref: "strongbox" }).ok).toBe(true);
+    expect(e.state.flags.box_open).toBe(true);
+  });
+
+  it("unlockExit in a different room reports the lock isn't here", () => {
+    const g = makeGame({
+      rooms: [
+        { id: "start", name: "Start", description: "s", doors: [{ direction: "north", to: "doorway" }], items: [
           item("key", "Key", [{ type: "unlockExit", roomId: "doorway", direction: "north" }]),
         ] },
-        { id: "doorway", name: "Doorway", description: "d", doors: [{ direction: "north", to: "end" }] },
+        { id: "doorway", name: "Doorway", description: "d", doors: [{ direction: "north", to: "end", requiresFlag: "open" }] },
         { id: "end", name: "End", description: "e", doors: [] },
       ],
     });
     const e = new Engine(g);
     e.takeItem(e.roomItemsHere[0]!);
+    // No requiresTarget here, but the effect still refuses a door in another room.
     e.useItem(find(e, "key")!, find(e, "key")!.def.uses[0]!);
-    expect(e.state.lastMessages.join(" ")).toMatch(/already open/);
+    expect(e.state.lastMessages.join(" ")).toMatch(/isn't in this room/);
   });
 
   it("endGame sets the outcome, message, and points", () => {

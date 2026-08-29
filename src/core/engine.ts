@@ -6,6 +6,7 @@ import type {
   ItemInstance,
   ItemUse,
   RoomDef,
+  RoomTarget,
 } from "./types";
 import { validateGame } from "./validate";
 
@@ -244,7 +245,7 @@ export class Engine {
     return { ok: true, messages: this.state.lastMessages };
   }
 
-  useItem(instance: ItemInstance, use: ItemUse): ActionResult {
+  useItem(instance: ItemInstance, use: ItemUse, target?: RoomTarget): ActionResult {
     this.resetMessages();
     if (this.state.ended) {
       this.tell("The story is over. Your last actions have already been spent.");
@@ -261,6 +262,26 @@ export class Engine {
       this.emit();
       return { ok: false, messages: this.state.lastMessages };
     }
+
+    // A targeted use must be aimed at a matching thing in the CURRENT room.
+    if (use.requiresTarget) {
+      if (!target) {
+        this.tell("You need to aim it at something in this room first.");
+        this.emit();
+        return { ok: false, messages: this.state.lastMessages };
+      }
+      if (target.type !== use.requiresTarget.type || target.ref !== use.requiresTarget.ref) {
+        this.tell("That isn't the right thing to aim it at.");
+        this.emit();
+        return { ok: false, messages: this.state.lastMessages };
+      }
+      if (!this.roomHasTarget(use.requiresTarget)) {
+        this.tell("That isn't here. You need to be in the same room as it.");
+        this.emit();
+        return { ok: false, messages: this.state.lastMessages };
+      }
+    }
+
     this.applyEffects(use.effects);
 
     if (use.chargesPerUse) instance.charges -= use.chargesPerUse;
@@ -320,6 +341,44 @@ export class Engine {
   /** The uses of an item that are currently available. */
   availableUses(instance: ItemInstance): ItemUse[] {
     return instance.def.uses.filter((u) => this.useAvailable(u, instance));
+  }
+
+  /* --------------------------- targeted-use targets ----------------------- */
+
+  /**
+   * Every aimable object in the current room, for targeted item-uses. Loose
+   * items here (by id) and **locked doors** (by direction) — an already-open
+   * door isn't a sensible "aim the key at the lock" target. The UI lets the
+   * player aim a targeted use at one of these by clicking it.
+   */
+  get aimableTargets(): RoomTarget[] {
+    const current = this.currentRoom;
+    const doors: RoomTarget[] = current.doors
+      .filter((d) => !this.isUnlocked(d))
+      .map((d) => ({ type: "door", ref: d.direction }));
+    const items: RoomTarget[] = this.roomItemsHere.map((i) => ({ type: "item", ref: i.id }));
+    return [...doors, ...items];
+  }
+
+  /** Resolve a door target to its `Door` (undefined if the direction isn't here). */
+  targetDoor(target: RoomTarget): Door | undefined {
+    if (target.type !== "door") return undefined;
+    return this.currentRoom.doors.find((d) => d.direction === target.ref);
+  }
+
+  /** Resolve an item target to the loose instance in the current room. */
+  targetItemHere(target: RoomTarget): ItemInstance | undefined {
+    if (target.type !== "item") return undefined;
+    return this.roomItemsHere.find((i) => i.id === target.ref);
+  }
+
+  /** Whether a targeted-use target is actually present in the current room. */
+  roomHasTarget(target: RoomTarget): boolean {
+    if (target.type === "door") {
+      const door = this.targetDoor(target);
+      return door !== undefined && !this.isUnlocked(door);
+    }
+    return this.targetItemHere(target) !== undefined;
   }
 
   /* -------------------------- scoring & persistence ----------------------- */
@@ -458,6 +517,13 @@ class EffectContext {
         const door = room?.doors.find((d) => d.direction === effect.direction);
         if (!room || !door) {
           this.messages.push("That exit doesn't seem to exist.");
+          break;
+        }
+        // A lock in another room cannot be opened from here. Unlock only ever
+        // targets a door that is present in the room the player is standing in,
+        // matching the "aim it at the lock" rule.
+        if (effect.roomId !== this.engine.state.currentRoomId) {
+          this.messages.push("That lock isn't in this room. You have to be where it is to turn the key.");
           break;
         }
         if (!door.requiresFlag) {

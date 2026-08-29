@@ -1,5 +1,5 @@
 import type { Engine } from "../core/engine";
-import type { ItemInstance, RoomDef } from "../core/types";
+import type { Door, ItemInstance, ItemUse, RoomDef, RoomTarget } from "../core/types";
 
 export function escapeHtml(text: string): string {
   return text
@@ -35,6 +35,52 @@ export function setRestartHandler(fn: (() => void) | null): void {
   onRestart = fn;
 }
 
+/* ------------------------- play interaction state ------------------------ */
+
+/**
+ * Session-wide UI state for the active play screen: the currently aimed
+ * (targeted) item-use, the pickup-buttons preference lookup, and a redraw hook
+ * so that non-engine interactions (aiming, toggling pickup buttons, clicking a
+ * target) can re-render. The web shell is expected to install `setPlayRedraw`
+ * so target clicks re-render even though the engine state hasn't changed yet.
+ */
+export interface Aim {
+  instance: ItemInstance;
+  use: ItemUse;
+}
+
+let aim: Aim | null = null;
+let redraw: (() => void) | null = null;
+
+export function setPlayRedraw(fn: (() => void) | null): void {
+  redraw = fn;
+}
+export function getAim(): Aim | null {
+  return aim;
+}
+export function aimAt(a: Aim | null): void {
+  aim = a;
+  redraw?.();
+}
+
+/** Pickup-buttons preference, persisted per game id. Defaults to ON. */
+const PICKUP_KEY = "cyoa:pickupBtns:";
+export function pickupButtonsEnabled(gameId: string): boolean {
+  try {
+    return localStorage.getItem(`${PICKUP_KEY}${gameId}`) !== "0";
+  } catch {
+    return true;
+  }
+}
+export function setPickupButtonsEnabled(gameId: string, on: boolean): void {
+  try {
+    localStorage.setItem(`${PICKUP_KEY}${gameId}`, on ? "1" : "0");
+  } catch {
+    // ignore
+  }
+  redraw?.();
+}
+
 /** Render the entire game UI into `root`. */
 export function render(root: HTMLElement, engine: Engine): void {
   const state = engine.state;
@@ -49,6 +95,7 @@ export function render(root: HTMLElement, engine: Engine): void {
   const shell = el("div", "shell");
   shell.appendChild(header(engine));
   shell.appendChild(statusBar(engine));
+  shell.appendChild(adminBar(engine));
 
   const layout = el("div", "layout");
   layout.append(
@@ -58,6 +105,24 @@ export function render(root: HTMLElement, engine: Engine): void {
   );
   shell.appendChild(layout);
   root.appendChild(shell);
+}
+
+/* ------------------------------- admin bar ------------------------------- */
+
+/** A thin bar for play-time toggles (e.g. hiding the pickup buttons). */
+function adminBar(engine: Engine): HTMLElement {
+  const bar = el("div", "admin-bar");
+  const on = pickupButtonsEnabled(engine.game.id);
+  const toggle = el("button", "ghost pickup-toggle");
+  toggle.textContent = on
+    ? "Pickup buttons: shown (click items on the art to hide them)"
+    : "Pickup buttons: hidden (click items on the art to collect them)";
+  toggle.title = "This story is harder with the buttons hidden.";
+  toggle.addEventListener("click", () => {
+    setPickupButtonsEnabled(engine.game.id, !on);
+  });
+  bar.appendChild(toggle);
+  return bar;
 }
 
 /* --------------------------------- header -------------------------------- */
@@ -90,7 +155,6 @@ function statusBar(engine: Engine): HTMLElement {
     bar.appendChild(chip);
   }
 
-  // Mid-game author-chosen points (via addPoints) even in a time-scored game.
   if (engine.state.points > 0 && engine.game.scoring?.type !== "points") {
     const chip = el("span", "status-chip score");
     chip.textContent = `★ ${engine.state.points} pts`;
@@ -106,6 +170,7 @@ function roomPanel(engine: Engine, room: RoomDef): HTMLElement {
   const h = el("h2", "room-name");
   h.textContent = room.name;
 
+  // Art area doubles as the "pick up items by clicking them" surface.
   const art = el("div", "room-art");
   if (room.image) {
     const img = document.createElement("img");
@@ -114,6 +179,7 @@ function roomPanel(engine: Engine, room: RoomDef): HTMLElement {
     img.loading = "eager";
     art.appendChild(img);
   }
+  art.appendChild(itemOverlay(engine));
 
   const body = el("div", "room-body");
   const desc = el("p", "room-desc");
@@ -129,20 +195,30 @@ function roomPanel(engine: Engine, room: RoomDef): HTMLElement {
   }
   body.appendChild(noticeWrap);
 
-  // Items lying here, awaiting pickup — the player chooses to take them.
+  // Aiming? Surface the room's targets so the player can click the one they
+  // mean to use their item on.
+  const aiming = getAim();
+  if (aiming) {
+    const banner = el("div", "notice aiming");
+    banner.textContent = `Aiming ${aiming.use.label} — click the ${aiming.use.description || "thing you want to use it on"}.`;
+    body.appendChild(banner);
+  }
+
+  // Items lying here — a clickable "You can take" row (toggleable off to make
+  // the story harder; the item overlay on the art above is always available).
   const here = engine.roomItemsHere;
-  if (here.length) {
+  if (here.length && pickupButtonsEnabled(engine.game.id)) {
     const e = el("h3", "subheading");
     e.textContent = "You can take";
     body.appendChild(e);
-    const takeGrid = el("div", "exit-grid");
+    const takeGrid = el("div", "exit-grid take-grid");
     for (const item of here) {
       takeGrid.appendChild(takeCard(engine, item));
     }
     body.appendChild(takeGrid);
   }
 
-  // Exits.
+  // Exits (and, while aiming, the locks/doors are aimable targets).
   const exits = engine.availableExits;
   if (exits.length) {
     const e = el("h3", "subheading");
@@ -150,16 +226,12 @@ function roomPanel(engine: Engine, room: RoomDef): HTMLElement {
     body.appendChild(e);
     const exitGrid = el("div", "exit-grid");
     for (const door of exits) {
-      const b = el("button", "exit");
-      b.textContent = door.direction;
-      b.title = door.to;
-      b.addEventListener("click", () => engine.tryMove(door));
-      exitGrid.appendChild(b);
+      exitGrid.appendChild(doorButton(engine, door));
     }
     body.appendChild(exitGrid);
   }
 
-  // Locked-but-seen doors shown disabled for mood.
+  // Locked doors shown disabled — and while aiming, clickable as a target.
   const locked = room.doors.filter((d) => !engine.isUnlocked(d));
   if (locked.length) {
     const e = el("h3", "subheading");
@@ -167,17 +239,59 @@ function roomPanel(engine: Engine, room: RoomDef): HTMLElement {
     body.appendChild(e);
     const grid = el("div", "exit-grid");
     for (const door of locked) {
-      const b = el("button", "exit locked");
-      b.textContent = `${door.direction} 🔒`;
-      b.disabled = true;
-      b.title = door.lockedText ?? "Locked";
-      grid.appendChild(b);
+      grid.appendChild(lockedDoor(engine, room, door));
     }
     body.appendChild(grid);
   }
 
   panel.append(h, art, body);
   return panel;
+}
+
+/**
+ * Clickable items floating over the room art. Clicking an item takes it (it
+ * disappears from the room). This is always available — even when the pickup
+ * buttons are hidden — so there is always a visual, in-world way to collect.
+ */
+function itemOverlay(engine: Engine): HTMLElement {
+  const overlay = el("div", "item-overlay");
+  const aiming = getAim();
+  const picks = engine.roomItemsHere.map((item) => {
+    const chip = el("button", "item-svg");
+    chip.classList.toggle("aimable", aiming?.use.requiresTarget?.type === "item");
+
+    if (aiming && aiming.use.requiresTarget?.type === "item") {
+      chip.classList.add("target-popper");
+    }
+
+    if (item.def.image) {
+      const img = document.createElement("img");
+      img.src = item.def.image;
+      img.alt = item.def.name;
+      img.draggable = false;
+      chip.appendChild(img);
+    }
+    const label = el("span", "item-svg-label");
+    label.textContent = item.def.name;
+    chip.appendChild(label);
+
+    chip.addEventListener("click", () => {
+      if (aiming && aiming.use.requiresTarget?.type === "item") {
+        // Aiming at an item: click it to run the use.
+        const target: RoomTarget = { type: "item", ref: item.id };
+        applyTargetedUse(engine, aiming, target);
+        return;
+      }
+      engine.takeItem(item);
+    });
+    return chip;
+  });
+
+  if (picks.length) {
+    overlay.classList.add("has-items");
+    for (const p of picks) overlay.appendChild(p);
+  }
+  return overlay;
 }
 
 function takeCard(engine: Engine, item: ItemInstance): HTMLElement {
@@ -187,8 +301,59 @@ function takeCard(engine: Engine, item: ItemInstance): HTMLElement {
   const hint = el("span", "take-hint");
   hint.textContent = item.def.description;
   b.append(name, hint);
-  b.addEventListener("click", () => engine.takeItem(item));
+
+  const aiming = getAim();
+  if (aiming && aiming.use.requiresTarget?.type === "item" && aiming.use.requiresTarget.ref === item.id) {
+    b.classList.add("target-popper");
+  }
+  b.addEventListener("click", () => {
+    if (aiming && aiming.use.requiresTarget?.type === "item") {
+      applyTargetedUse(engine, aiming, { type: "item", ref: item.id });
+      return;
+    }
+    engine.takeItem(item);
+  });
   return b;
+}
+
+function doorButton(engine: Engine, door: Door): HTMLElement {
+  const b = el("button", "exit");
+  b.textContent = door.direction;
+  b.title = door.to;
+  b.addEventListener("click", () => {
+    // Exits are never a "use" target in normal play; leaving a room cancels any pending aim.
+    if (getAim()) aimAt(null);
+    engine.tryMove(door);
+  });
+  return b;
+}
+
+function lockedDoor(engine: Engine, room: RoomDef, door: RoomDef["doors"][number]): HTMLElement {
+  const b = el("button", "exit locked");
+  const aiming = getAim();
+
+  if (aiming && aiming.use.requiresTarget?.type === "door" && aiming.use.requiresTarget.ref === door.direction) {
+    // This is the lock the player is trying to aim at.
+    b.classList.add("target-popper");
+    b.disabled = false;
+    b.textContent = `🔓 ${door.direction}`;
+    b.title = "Click to use the aimed item here.";
+    b.addEventListener("click", () => {
+      applyTargetedUse(engine, aiming, { type: "door", ref: door.direction });
+    });
+  } else {
+    b.disabled = true;
+    b.textContent = `${door.direction} 🔒`;
+    b.title = door.lockedText ?? "Locked";
+  }
+  return b;
+}
+
+/** Run a targeted use against a chosen current-room target. */
+function applyTargetedUse(engine: Engine, a: Aim, target: RoomTarget): void {
+  const res = engine.useItem(a.instance, a.use, target);
+  aimAt(null);
+  void res;
 }
 
 /* ------------------------------ inventory -------------------------------- */
@@ -200,6 +365,9 @@ function inventoryPanel(engine: Engine): HTMLElement {
   panel.appendChild(h);
 
   const inv = engine.state.inventory;
+  // Targeting hint while we're aiming.
+  const aiming = getAim();
+
   if (!inv.length) {
     const empty = el("p", "muted");
     empty.textContent = "Nothing yet. Pick things up as you explore.";
@@ -212,6 +380,7 @@ function inventoryPanel(engine: Engine): HTMLElement {
     list.appendChild(itemCard(engine, instance));
   }
   panel.appendChild(list);
+  void aiming;
   return panel;
 }
 
@@ -240,13 +409,31 @@ function itemCard(engine: Engine, instance: ItemInstance): HTMLElement {
   card.appendChild(badge);
 
   const buttons = el("div", "item-uses");
+  const aiming = getAim();
+  const thisAimActive = aiming?.instance === instance;
+
   for (const use of engine.availableUses(instance)) {
     const b = el("button", "item-use");
     b.textContent = use.label;
     b.title = use.description;
-    b.addEventListener("click", () => engine.useItem(instance, use));
+
+    if (use.requiresTarget) {
+      // Targeted use: clicking arms it (aim mode) rather than running it.
+      b.classList.add("aimable");
+      b.classList.toggle("active-aim", thisAimActive && aiming?.use === use);
+      b.addEventListener("click", () => {
+        aimAt(aiming?.use === use ? null : { instance, use });
+      });
+    } else {
+      if (thisAimActive) b.classList.add("aimable");
+      b.addEventListener("click", () => {
+        if (aiming) aimAt(null);
+        engine.useItem(instance, use);
+      });
+    }
     buttons.appendChild(b);
   }
+
   card.appendChild(buttons);
   return card;
 }
@@ -287,7 +474,6 @@ function mapPanel(engine: Engine): HTMLElement {
     nameSpan.textContent = seen ? room.name : "?";
     tile.appendChild(nameSpan);
 
-    // Brief description/hint shown on the tile, so you can orient yourself.
     const hint = el("span", "map-tile-hint");
     if (current) {
       hint.textContent = room.mapHint ?? room.description;

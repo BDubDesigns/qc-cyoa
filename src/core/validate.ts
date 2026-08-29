@@ -89,6 +89,17 @@ export function inspectGame(game: GameDefinition): ValidationIssue[] {
     for (const item of room.items ?? []) {
       for (const use of item.uses ?? []) {
         if (!use.label) bad(`item "${item.id}" has a use with no label`);
+        // A targeted use's item ref must reference a real item somewhere.
+        if (use.requiresTarget?.type === "item") {
+          const tid = use.requiresTarget.ref;
+          if (!tid) bad(`item "${item.id}" use "${use.label}" targets an item with no id`);
+          else if (!itemIds.has(tid)) {
+            bad(`item "${item.id}" use "${use.label}" targets unknown item "${tid}"`);
+          }
+        }
+        if (use.requiresTarget?.type === "door" && !use.requiresTarget.ref) {
+          bad(`item "${item.id}" use "${use.label}" targets a door with no direction`);
+        }
         for (const effect of use.effects ?? []) checkEffect(effect);
       }
     }

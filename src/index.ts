@@ -9,6 +9,7 @@ export type {
   ItemInstance,
   ItemUse,
   RoomDef,
+  RoomTarget,
 } from "./core/types";
 export {
   defineGame,

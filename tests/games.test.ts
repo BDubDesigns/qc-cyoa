@@ -53,19 +53,22 @@ describe("The Flooded Post Office", () => {
     expect([boiler.x, boiler.y]).toEqual([1, -1]);
   });
 
-  it("crowbar pries open both locked doors and persists", () => {
+  it("crowbar pries open both locked doors (from the sorting room) and persists", () => {
     const e = new Engine(postOffice);
     e.takeItem(here(e, "crowbar")!);
     const crowbar = find(e, "crowbar")!;
     const pryVault = crowbar.def.uses.find((u) => u.label.includes("vault"))!;
     const pryBoiler = crowbar.def.uses.find((u) => u.label.includes("boiler"))!;
 
+    // The locks are in the sorting room; the crowbar is found in the lobby.
     expect(e.useAvailable(pryVault)).toBe(true);
-    e.useItem(crowbar, pryVault);
+    e.tryMove(e.currentRoom.doors.find((d) => d.to === "sorting_room")!);
+
+    expect(e.useItem(crowbar, pryVault, { type: "door", ref: "south" }).ok).toBe(true);
     expect(find(e, "crowbar")).toBeDefined(); // persists
     expect(e.isUnlocked(e.roomsById.get("sorting_room")!.doors.find((d) => d.to === "vault")!)).toBe(true);
 
-    e.useItem(find(e, "crowbar")!, pryBoiler);
+    e.useItem(find(e, "crowbar")!, pryBoiler, { type: "door", ref: "north" });
     expect(find(e, "crowbar")).toBeDefined(); // still persists
     expect(e.isUnlocked(e.roomsById.get("sorting_room")!.doors.find((d) => d.to === "boiler")!)).toBe(true);
   });
@@ -93,8 +96,8 @@ describe("The Flooded Post Office", () => {
     const e = new Engine(postOffice);
     e.takeItem(here(e, "crowbar")!);
     const crowbar = find(e, "crowbar")!;
-    e.useItem(crowbar, crowbar.def.uses.find((u) => u.label.includes("boiler"))!);
     e.tryMove(e.currentRoom.doors.find((d) => d.to === "sorting_room")!);
+    e.useItem(crowbar, crowbar.def.uses.find((u) => u.label.includes("boiler"))!, { type: "door", ref: "north" });
     e.tryMove(e.currentRoom.doors.find((d) => d.to === "boiler")!);
 
     e.takeItem(here(e, "gold_sovereign")!);
@@ -108,8 +111,8 @@ describe("The Flooded Post Office", () => {
     const e = new Engine(postOffice);
     e.takeItem(here(e, "crowbar")!);
     const crowbar = find(e, "crowbar")!;
-    e.useItem(crowbar, crowbar.def.uses.find((u) => u.label.includes("vault"))!);
     e.tryMove(e.currentRoom.doors.find((d) => d.to === "sorting_room")!);
+    e.useItem(crowbar, crowbar.def.uses.find((u) => u.label.includes("vault"))!, { type: "door", ref: "south" });
     e.tryMove(e.currentRoom.doors.find((d) => d.to === "vault")!);
 
     e.takeItem(here(e, "parish_ledger")!);
@@ -127,8 +130,8 @@ describe("The Flooded Post Office", () => {
     const e = new Engine(postOffice);
     e.takeItem(here(e, "crowbar")!);
     const crowbar = find(e, "crowbar")!;
-    e.useItem(crowbar, crowbar.def.uses.find((u) => u.label.includes("vault"))!);
     e.tryMove(e.currentRoom.doors.find((d) => d.to === "sorting_room")!);
+    e.useItem(crowbar, crowbar.def.uses.find((u) => u.label.includes("vault"))!, { type: "door", ref: "south" });
     e.takeItem(here(e, "storm_lantern")!);
     e.useItem(find(e, "storm_lantern")!, find(e, "storm_lantern")!.def.uses[0]!); // 3 -> 2 charges
 

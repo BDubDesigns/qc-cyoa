@@ -29,18 +29,23 @@ export function roomWithItems(items: ItemDef[]): GameDefinition {
   });
 }
 
-/** Convenience: an item with a single use applying `effects`. */
+/**
+ * Convenience: an item with a single use applying `effects`. `useOpts` (if
+ * given) is merged into the item's single use (e.g. to set `requiresTarget`);
+ * `opts` is merged into the ItemDef itself.
+ */
 export function item(
   id: string,
   name: string,
   effects: GameDefinitionEffects,
+  useOpts: Partial<import("../src/core/types").ItemUse> = {},
   opts: Partial<ItemDef> = {},
 ): ItemDef {
   return {
     id,
     name,
     description: `${name} description`,
-    uses: [{ label: `Use ${name}`, description: `use ${name}`, effects }],
+    uses: [{ label: `Use ${name}`, description: `use ${name}`, effects, ...useOpts }],
     ...opts,
   };
 }
