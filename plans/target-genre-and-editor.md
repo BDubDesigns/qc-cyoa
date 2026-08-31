@@ -4,6 +4,11 @@
 > **product we are building** so work can continue without re-explaining the whole pivot.
 > Companion docs: `history-and-architecture.md` (where we came from) and
 > `research-he-games.md` (the games we're modeling).
+>
+> **Scope boundary:** before proposing **engine/Studio architecture changes**, read the
+> canonical product constitution at `docs/product/engine-boundaries.md` (what the product
+> is, what it is not, and the feature decision test). This write-up is *direction*; that
+> document is *boundary*.
 
 ---
 

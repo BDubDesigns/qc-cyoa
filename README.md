@@ -306,6 +306,16 @@ tests/
   helpers.ts      # tiny game builders for the engine unit tests
 ```
 
+## Product scope & engine boundaries
+
+`docs/product/engine-boundaries.md` is the canonical product constitution: it defines
+qc-cyoa as an **illustrated, voiced, point-and-click adventure creator** (SCUMM-like
+runtime, CYOA-like learning curve), records the engine primitives that fit the product,
+hard non-goals, and a decision test for future engine/Studio features. **Read it before
+making product-level engine or Studio architecture changes.** The three linked write-ups
+in `plans/` (`target-genre-and-editor.md`, `research-he-games.md`,
+`history-and-architecture.md`) record where the product is going and why.
+
 ## Adding your own images
 
 Assign any of the following to `RoomDef.image` / `ItemDef.image`:
