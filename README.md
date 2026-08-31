@@ -313,9 +313,13 @@ qc-cyoa as an **illustrated, voiced, point-and-click adventure creator** (SCUMM-
 runtime, CYOA-like learning curve), records the engine primitives that fit the product,
 hard non-goals, and a decision test for future engine/Studio features. **Read it before
 making product-level engine or Studio architecture changes** (see `AGENTS.md`, the
-agent-instruction pointer). The three linked write-ups in `plans/`
-(`target-genre-and-editor.md`, `research-he-games.md`, `history-and-architecture.md`)
-record where the product is going and why.
+agent-instruction pointer). `docs/roadmap.md` is the canonical current implementation
+sequence.
+
+The docs in `plans/` (`target-genre-and-editor.md`, `research-he-games.md`,
+`history-and-architecture.md`) are **earlier pivot/handoff documents retained for
+historical and design context** — not current direction. Where they conflict with
+`docs/roadmap.md` or `docs/product/engine-boundaries.md`, the canonical docs win.
 
 ## Adding your own images
 

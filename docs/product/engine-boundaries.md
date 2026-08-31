@@ -288,10 +288,18 @@ Agents reach it through a small pointer chain — each has exactly one link, not
 
 - `AGENTS.md` (the repository's agent-instruction surface) points to this document before
   any product-level engine/Studio architecture work, and applies the §11 decision test;
-- `plans/target-genre-and-editor.md`, the primary product-direction handoff, references it
-  in its header;
-- the `README.md` project overview references it under "Product scope & engine
+- `docs/roadmap.md` is the **canonical current implementation sequence** and this document
+  is the **canonical scope boundary**;
+- the `README.md` project overview references both under "Product scope & engine
   boundaries".
+
+Where substantive art/runtime direction needed from earlier planning, note that the docs in
+`plans/` (`target-genre-and-editor.md`, `research-he-games.md`, `history-and-architecture.md`)
+are **earlier pivot/handoff documents retained for historical and design context**, **not**
+current direction; their art/runtime claims (e.g. "SVG is the default") predate the current
+roadmap and may conflict with `docs/roadmap.md` or this document. **Where they conflict, the
+canonical documents win.** Do not treat those plan files as authoritative for what the
+product is building now.
 
 Keep this pointer chain minimal: this document stays the one source of truth, and adding a
 new link should only ever point back here.

@@ -16,11 +16,14 @@ product-level engine or Studio change, and keep this document the single source 
 ## Where things live
 
 - `src/core/` — engine (data-driven, serializable), `types.ts`, author-time validation.
-- `src/games/` — the shipped demo games (flagship lives here).
+- `src/games/` — the shipped demo games (`lighthouse`, `post_office`). The flagship does
+  not exist yet; it is planned, not shipped.
 - `src/web/` + `src/studio/` — player renderer and the authoring studio.
 - `server/` — bare `node:http` + `node:sqlite` backend, temp auth.
-- `plans/` — product-direction write-ups (`target-genre-and-editor.md`,
-  `research-he-games.md`, `history-and-architecture.md`).
+- `docs/` — canonical product/implementation docs: `roadmap.md` (current implementation
+  sequence) and `product/engine-boundaries.md` (scope boundary).
+- `plans/` — **historical/design-context** write-ups (`target-genre-and-editor.md`,
+  `research-he-games.md`, `history-and-architecture.md`), not current direction.
 - `tests/` — Vitest suites.
 
 ## Quality bar

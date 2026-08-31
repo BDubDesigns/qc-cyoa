@@ -1,14 +1,20 @@
 # Target: a Humongous-style adventure engine + authoring editor
 
-> **Purpose.** The single most important write-up for the next session(s). It records the
-> **product we are building** so work can continue without re-explaining the whole pivot.
-> Companion docs: `history-and-architecture.md` (where we came from) and
-> `research-he-games.md` (the games we're modeling).
+> **Status — historical/design context.** This is an **earlier pivot/handoff document
+> retained for historical and design context**, not current product direction. Its
+> art/runtime framing (e.g. "SVG is the default") predates the current roadmap. The
+> **canonical current implementation sequence** is `docs/roadmap.md`, and the **canonical
+> scope boundary** is `docs/product/engine-boundaries.md`. Where this document conflicts
+> with either, the canonical docs win.
+>
+> **Purpose.** It records the original **product we were building** at the pivot so work
+> can continue without re-explaining it. Companion docs: `history-and-architecture.md`
+> (where we came from) and `research-he-games.md` (the games we're modeling).
 >
 > **Scope boundary:** before proposing **engine/Studio architecture changes**, read the
 > canonical product constitution at `docs/product/engine-boundaries.md` (what the product
-> is, what it is not, and the feature decision test). This write-up is *direction*; that
-> document is *boundary*.
+> is, what it is not, and the feature decision test), and the current sequencing in
+> `docs/roadmap.md`.
 
 ---
 
