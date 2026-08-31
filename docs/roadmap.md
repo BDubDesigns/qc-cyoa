@@ -14,6 +14,8 @@ Core rule:
 
 Small fixtures are fine for testing. Do not hand-code the flagship around missing Studio features. If authoring through Studio is painful, that is product feedback.
 
+The canonical current flagship game design lives in `docs/flagship/bigfoot-adventure.md`. Issue #1 remains its design epic and decision history.
+
 ## Current planning issues
 
 - #1 — Flagship Pacific Northwest Bigfoot adventure design and runtime requirements
