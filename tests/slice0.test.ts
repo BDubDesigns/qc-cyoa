@@ -443,6 +443,21 @@ describe("generate via provider (mock)", () => {
     }
     expect(threw).toBe(true);
   });
+
+  it("fails closed BEFORE any network call when the contract is unknown", async () => {
+    // Even with URL + key configured, an unknown contract must refuse to
+    // guess — no request is made, and the error names SINGULARITY_CONTRACT.
+    const s = new SingularityProvider({ apiUrl: "https://singularity.invalid/gen", apiKey: "secret", contract: undefined });
+    let threw = false;
+    try {
+      await s.generate({ prompt: "x" });
+    } catch (err) {
+      threw = true;
+      expect(isMissingIntegration(err)).toBe(true);
+      expect((err as Error).message).toContain("SINGULARITY_CONTRACT");
+    }
+    expect(threw).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -462,6 +477,63 @@ describe("provider boundary", () => {
     const s = new SingularityProvider({});
     // Without env it must throw the sentinel, not an opaque network error.
     await expect(s.generate({ prompt: "x" })).rejects.toSatisfy((err: unknown) => isMissingIntegration(err));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Delete cleanup: removing appearance/asset also removes backing files
+// ---------------------------------------------------------------------------
+
+describe("delete cascade file cleanup", () => {
+  it("deleting an appearance removes its variant files from disk", async () => {
+    const cookie = await signup("hannah-s0", "secret123");
+    const pid = await createProject(cookie, "P");
+    const assetId = await createAsset(cookie, pid, "Sasquatch", "character");
+    const appId = await createAppearance(cookie, pid, assetId, "Hiding Badly");
+
+    const up = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}/appearances/${appId}/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ imageBase64: TINY_PNG_DATAURL }),
+    });
+    const { variant } = (await up.json()) as { variant: { id: string; storage_path: string | null } };
+    expect(variant.storage_path).toBeTruthy();
+
+    // capture abs path from env asset dir
+    const assetDir = process.env.ASSET_DIR!;
+    const expectedAbs = path.join(assetDir, `${variant.id}.png`);
+    expect(fs.existsSync(expectedAbs)).toBe(true);
+
+    const del = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}/appearances/${appId}`, {
+      method: "DELETE",
+      headers: { Cookie: cookie },
+    });
+    expect(del.status).toBe(200);
+    expect(fs.existsSync(expectedAbs)).toBe(false);
+  });
+
+  it("deleting an asset removes variant files from disk", async () => {
+    const cookie = await signup("ian-s0", "secret123");
+    const pid = await createProject(cookie, "P");
+    const assetId = await createAsset(cookie, pid, "Cup", "prop");
+    const appId = await createAppearance(cookie, pid, assetId, "Default");
+
+    const up = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}/appearances/${appId}/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ imageBase64: TINY_PNG_DATAURL }),
+    });
+    const { variant } = (await up.json()) as { variant: { id: string; storage_path: string | null } };
+    const assetDir = process.env.ASSET_DIR!;
+    const expectedAbs = path.join(assetDir, `${variant.id}.png`);
+    expect(fs.existsSync(expectedAbs)).toBe(true);
+
+    const del = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}`, {
+      method: "DELETE",
+      headers: { Cookie: cookie },
+    });
+    expect(del.status).toBe(200);
+    expect(fs.existsSync(expectedAbs)).toBe(false);
   });
 });
 

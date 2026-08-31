@@ -41,6 +41,29 @@ function assertOwnerForAsset(projectId: string, assetId: string, user: UserLike)
   return { assetId: row.id, projectId };
 }
 
+/** Best-effort unlink of a stored variant file, contained to the asset dir. */
+function unlinkVariantFile(storagePath: string | null): void {
+  if (!storagePath) return;
+  try {
+    const abs = path.resolve(storagePath);
+    if (abs.startsWith(assetDir())) fs.unlinkSync(abs);
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Collect every variant storage_path under a given appearance or asset and
+ * unlink those files best-effort. Used before DELETE so DB cascade doesn't
+ * orphan files on disk.
+ */
+function unlinkVariantsFor(query: string, param: string): void {
+  const rows = getDb()
+    .prepare(`SELECT storage_path FROM asset_variants WHERE appearance_id IN (${query})`)
+    .all(param) as Array<{ storage_path: string | null }>;
+  for (const r of rows) unlinkVariantFile(r.storage_path);
+}
+
 function assertOwnerForAppearance(
   projectId: string,
   assetId: string,
@@ -185,6 +208,8 @@ export const assetHandlers = {
   // DELETE /api/projects/:projectId/assets/:assetId
   remove(req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse, user: UserLike, projectId: string, assetId: string) {
     assertOwnerForAsset(projectId, assetId, user);
+    // unlink descendant variant files before cascade delete (all appearances under this asset)
+    unlinkVariantsFor("SELECT id FROM asset_appearances WHERE asset_id = ?", assetId);
     getDb().prepare("DELETE FROM assets WHERE id = ?").run(assetId);
     getDb().prepare("UPDATE projects SET updated_at = ? WHERE id = ?").run(Date.now(), projectId);
     writeJson(res, 200, { ok: true });
@@ -265,6 +290,8 @@ export const appearanceHandlers = {
     appearanceId: string,
   ) {
     assertOwnerForAppearance(projectId, assetId, appearanceId, user);
+    // unlink descendant variant files before cascade delete
+    unlinkVariantsFor("SELECT id FROM asset_appearances WHERE id = ?", appearanceId);
     getDb().prepare("DELETE FROM asset_appearances WHERE id = ?").run(appearanceId);
     writeJson(res, 200, { ok: true });
   },
@@ -348,14 +375,7 @@ export const variantHandlers = {
     // clear active if it pointed here
     getDb().prepare("UPDATE asset_appearances SET active_variant_id = NULL WHERE id = ? AND active_variant_id = ?").run(appearanceId, variantId);
     // best-effort remove file
-    if (row.storage_path) {
-      try {
-        const abs = path.resolve(row.storage_path);
-        if (abs.startsWith(assetDir())) fs.unlinkSync(abs);
-      } catch {
-        // ignore
-      }
-    }
+    unlinkVariantFile(row.storage_path);
     writeJson(res, 200, { ok: true });
   },
 

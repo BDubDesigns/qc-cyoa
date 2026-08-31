@@ -473,7 +473,7 @@ async function buildAppearanceNode(projectId: string, assetId: string, appearanc
   uploadRow.className = "upload-row";
   const fileInput = document.createElement("input");
   fileInput.type = "file";
-  fileInput.accept = "image/png,image/jpeg,image/webp,image/gif,image/svg+xml";
+  fileInput.accept = "image/png,image/jpeg,image/webp,image/gif";
   const uploadBtn = document.createElement("button");
   uploadBtn.className = "ghost";
   uploadBtn.textContent = "Upload";

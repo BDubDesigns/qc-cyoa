@@ -9,10 +9,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-const ASSET_DIR = process.env.ASSET_DIR ?? "server/data/assets";
+const DEFAULT_ASSET_DIR = "server/data/assets";
 
 export function assetDir(): string {
-  return path.resolve(ASSET_DIR);
+  // Read env at call time so tests can redirect per-case.
+  return path.resolve(process.env.ASSET_DIR ?? DEFAULT_ASSET_DIR);
 }
 
 export function ensureAssetDir(): void {
@@ -69,13 +70,12 @@ export function mimeForPath(storagePath: string | null): string {
   }
 }
 
-/** Allowed upload mimes. */
+/** Allowed upload mimes — SVG excluded for now (see review: unsanitized SVG can carry active content). */
 export const ALLOWED_UPLOAD_MIMES = new Set([
   "image/png",
   "image/jpeg",
   "image/webp",
   "image/gif",
-  "image/svg+xml",
 ]);
 
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB
