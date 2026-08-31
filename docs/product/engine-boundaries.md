@@ -284,17 +284,14 @@ If that answer is unclear, this document is not specific enough — sharpen it.
 This document is the **single canonical source of truth** for product-level engine and
 Studio scope. Do not duplicate it into multiple instruction files; link to it instead.
 
-Because the repository has no formal agent/developer-instruction surface (no `AGENTS.md`,
-`CLAUDE.md`, or `.github` guidance), the recommended linkage is:
+Agents reach it through a small pointer chain — each has exactly one link, not a copy:
 
-- Every **planning** artifact that proposes engine or Studio architecture work must link
-  to this document from its header note and apply the §11 decision test.
-- The project's primary handoff read in `plans/target-genre-and-editor.md` and the
-  `README.md` project overview both reference this document so a planning agent reaches it
-  early.
-- If a formal agent-instruction file (_e.g._ `AGENTS.md`) is later introduced, it should
-  add exactly one pointer — "read `docs/product/engine-boundaries.md` before making
-  product-level engine/Studio architecture changes" — and nothing more.
+- `AGENTS.md` (the repository's agent-instruction surface) points to this document before
+  any product-level engine/Studio architecture work, and applies the §11 decision test;
+- `plans/target-genre-and-editor.md`, the primary product-direction handoff, references it
+  in its header;
+- the `README.md` project overview references it under "Product scope & engine
+  boundaries".
 
-**Pointer:** agents planning product-level engine/Studio changes must read this document
-first (`docs/product/engine-boundaries.md`).
+Keep this pointer chain minimal: this document stays the one source of truth, and adding a
+new link should only ever point back here.

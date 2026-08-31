@@ -312,9 +312,10 @@ tests/
 qc-cyoa as an **illustrated, voiced, point-and-click adventure creator** (SCUMM-like
 runtime, CYOA-like learning curve), records the engine primitives that fit the product,
 hard non-goals, and a decision test for future engine/Studio features. **Read it before
-making product-level engine or Studio architecture changes.** The three linked write-ups
-in `plans/` (`target-genre-and-editor.md`, `research-he-games.md`,
-`history-and-architecture.md`) record where the product is going and why.
+making product-level engine or Studio architecture changes** (see `AGENTS.md`, the
+agent-instruction pointer). The three linked write-ups in `plans/`
+(`target-genre-and-editor.md`, `research-he-games.md`, `history-and-architecture.md`)
+record where the product is going and why.
 
 ## Adding your own images
 
