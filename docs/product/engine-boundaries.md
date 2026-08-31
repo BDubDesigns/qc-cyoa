@@ -5,10 +5,13 @@
 > development must not casually cross. Read it before proposing or planning any
 > product-level engine or Studio architecture change.
 >
-> **Status.** Source of truth for product scope. Companion write-ups and a history of the
-> pivot live in `plans/` (`target-genre-and-editor.md`, `research-he-games.md`,
-> `history-and-architecture.md`); those record *where the product is going and why* — this
-> document records *the boundaries it must not cross*.
+> **Status.** Source of truth for product scope. Earlier pivot/handoff write-ups and a
+> history of the pivot live in `plans/` (`target-genre-and-editor.md`,
+> `research-he-games.md`, `history-and-architecture.md`) and are retained for historical
+> and design context, **not** current direction. Current implementation sequencing lives in
+> `docs/roadmap.md`; this document records the scope boundaries the product must not cross.
+> Where those `plans/` docs conflict with `docs/roadmap.md` or this document, the canonical
+> docs win.
 
 ---
 
