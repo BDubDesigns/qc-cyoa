@@ -12,6 +12,7 @@ export function navBar(active: string): HTMLElement {
     { label: "Home", route: { name: "home" }, key: "home" },
     { label: "Browse", route: { name: "browse" }, key: "browse" },
     { label: "Studio", route: { name: "studio" }, key: "studio" },
+    { label: "Projects", route: { name: "projects" }, key: "projects" },
     { label: "Account", route: { name: "account" }, key: "account" },
   ];
 

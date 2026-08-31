@@ -12,6 +12,7 @@ import { mountPlay, unmountPlay } from "./play";
 import { mountStudio } from "../studio/studio";
 import { mountBrowse } from "./browse";
 import { mountAccount } from "./account";
+import { mountProjects, mountProjectDetail } from "./projects";
 import { navBar } from "./ui";
 
 const root = document.getElementById("root")!;
@@ -39,6 +40,12 @@ async function dispatch(route: Route): Promise<void> {
       return;
     case "account":
       await mountAccount(root);
+      return;
+    case "projects":
+      await mountProjects(root);
+      return;
+    case "project":
+      await mountProjectDetail(root, route.projectId);
       return;
   }
 }
@@ -101,11 +108,15 @@ function renderHome(): void {
       studio.href = "#/studio";
       studio.className = "primary";
       studio.textContent = "Author a story →";
+      const projects = document.createElement("a");
+      projects.href = "#/projects";
+      projects.className = "primary ghost";
+      projects.textContent = "Projects →";
       const browse = document.createElement("a");
       browse.href = "#/browse";
       browse.className = "primary ghost";
       browse.textContent = "Browse stories";
-      links.append(studio, browse);
+      links.append(studio, projects, browse);
       sec.append(h, p, links);
       return sec;
     })(),
