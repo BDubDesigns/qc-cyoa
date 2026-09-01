@@ -13,6 +13,10 @@ non-goals, and the feature decision test in §11. Apply that test before proposi
 product-level engine or Studio change, and keep this document the single source of truth
 (do not duplicate its contents here).
 
+For work that depends on the flagship game itself, read
+`docs/flagship/bigfoot-adventure.md`, the canonical current Bigfoot adventure design and
+Issue #1 requirements source.
+
 ## Where things live
 
 - `src/core/` — engine (data-driven, serializable), `types.ts`, author-time validation.
@@ -21,7 +25,8 @@ product-level engine or Studio change, and keep this document the single source 
 - `src/web/` + `src/studio/` — player renderer and the authoring studio.
 - `server/` — bare `node:http` + `node:sqlite` backend, temp auth.
 - `docs/` — canonical product/implementation docs: `roadmap.md` (current implementation
-  sequence) and `product/engine-boundaries.md` (scope boundary).
+  sequence), `product/engine-boundaries.md` (scope boundary), and
+  `flagship/bigfoot-adventure.md` (current flagship game design).
 - `plans/` — **historical/design-context** write-ups (`target-genre-and-editor.md`,
   `research-he-games.md`, `history-and-architecture.md`), not current direction.
 - `tests/` — Vitest suites.
