@@ -210,6 +210,9 @@ export async function mountProjectDetail(root: HTMLElement, projectId: string): 
   const saveBtn = document.createElement("button");
   saveBtn.className = "primary ghost";
   saveBtn.textContent = "Save";
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "ghost danger";
+  deleteBtn.textContent = "Delete project";
   const backBtn = document.createElement("button");
   backBtn.className = "ghost";
   backBtn.textContent = "← All projects";
@@ -228,9 +231,16 @@ export async function mountProjectDetail(root: HTMLElement, projectId: string): 
       saveBtn.disabled = false;
     }
   });
-  editRow.append(backBtn, titleEdit, descEdit, saveBtn);
+  editRow.append(backBtn, titleEdit, descEdit, saveBtn, deleteBtn);
   head.appendChild(editRow);
   container.appendChild(head);
+
+  // Delete project — strong confirmation: type the exact project name. This
+  // project may eventually contain paid/generated assets, so a bare OK/DELETE
+  // is not enough.
+  deleteBtn.addEventListener("click", () => {
+    openDeleteProjectConfirm(deleteBtn, project.title, project.id);
+  });
 
   // Asset creation
   const createSec = document.createElement("div");
@@ -243,7 +253,7 @@ export async function mountProjectDetail(root: HTMLElement, projectId: string): 
   assetName.placeholder = "Asset name (e.g. Sasquatch, Cup, Bedroom Background)";
   assetName.className = "input";
   const assetCat = document.createElement("select");
-  for (const cat of ["character", "prop", "background", "inventory item", "clue", "effect", "other"]) {
+  for (const cat of ["background", "character", "object", "effect", "overlay", "other"]) {
     const opt = document.createElement("option");
     opt.value = cat;
     opt.textContent = cat;
@@ -656,6 +666,79 @@ function fileToBase64(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("failed to read file"));
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Destructive Delete Project confirmation. Requires typing the exact project
+ * name to proceed, states that contained assets/appearances/variants are
+ * deleted too, and returns to the projects list on success.
+ */
+function openDeleteProjectConfirm(anchor: HTMLElement, projectTitle: string, projectId: string): void {
+  const overlay = document.createElement("div");
+  overlay.className = "playtest-overlay";
+  const modal = document.createElement("div");
+  modal.className = "panel app-panel";
+  modal.style.width = "min(480px, 92vw)";
+
+  const h = document.createElement("h3");
+  h.textContent = `Delete project "${projectTitle}"?`;
+  const body = document.createElement("p");
+  body.className = "muted";
+  body.textContent =
+    "This permanently deletes the project and everything inside it: all assets, appearances, and generated or uploaded variants. This cannot be undone.";
+  const body2 = document.createElement("p");
+  body2.className = "muted";
+  body2.textContent = `Type the project name “${projectTitle}” to confirm.`;
+
+  const input = document.createElement("input");
+  input.className = "input";
+  input.placeholder = "Type the project name to confirm";
+  input.autocomplete = "off";
+
+  const actions = document.createElement("div");
+  actions.className = "projects-create";
+  const cancelBtn = document.createElement("button");
+  cancelBtn.className = "ghost";
+  cancelBtn.textContent = "Cancel";
+  const confirmBtn = document.createElement("button");
+  confirmBtn.className = "primary danger";
+  confirmBtn.textContent = "Delete project";
+  confirmBtn.disabled = true;
+  actions.append(cancelBtn, confirmBtn);
+
+  function close(): void {
+    overlay.remove();
+  }
+  cancelBtn.addEventListener("click", close);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  input.addEventListener("input", () => {
+    confirmBtn.disabled = input.value !== projectTitle;
+  });
+  confirmBtn.addEventListener("click", async () => {
+    if (input.value !== projectTitle) {
+      confirmBtn.disabled = true;
+      return;
+    }
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "Deleting…";
+    try {
+      await api.deleteProject(projectId);
+      // Deleted from here — return to the projects list.
+      navigate({ name: "projects" });
+    } catch (err) {
+      notice(modal, message(err), "error");
+      confirmBtn.textContent = "Delete project";
+      confirmBtn.disabled = false;
+    }
+  });
+
+  modal.append(h, body, body2, input, actions);
+  modal.addEventListener("click", (e) => e.stopPropagation());
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  input.focus();
 }
 
 function message(err: unknown): string {

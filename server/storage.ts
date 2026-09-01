@@ -108,3 +108,13 @@ export const ALLOWED_UPLOAD_MIMES = new Set([
 ]);
 
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB
+
+/**
+ * Max JSON request body for the route that receives image uploads.
+ *
+ * Uploads travel as a base64 *data URL* inside a JSON body, and base64 is ~4/3
+ * the raw size — so an image at MAX_UPLOAD_BYTES (8 MB) needs ~10.7 MB of JSON
+ * text plus the JSON/data-URL prefix envelope. This cap is route-specific so
+ * ordinary JSON bodies keep the smaller DEFAULT_MAX_BODY_BYTES limit in json.ts.
+ */
+export const MAX_UPLOAD_JSON_BYTES = Math.ceil((MAX_UPLOAD_BYTES * 4) / 3) + 512 * 1024;

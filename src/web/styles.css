@@ -395,6 +395,17 @@ body {
   background: var(--panel-2);
   filter: none;
 }
+.primary.danger {
+  background: linear-gradient(180deg, var(--bad), #a33);
+  color: #fff;
+}
+.primary.danger:hover {
+  filter: brightness(1.05);
+}
+.primary.danger:disabled {
+  background: var(--bad);
+  opacity: 0.5;
+}
 
 .muted {
   color: var(--muted);

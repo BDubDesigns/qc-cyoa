@@ -16,6 +16,7 @@ import { gameRoutes, requireUser } from "./routes/games";
 import { projectRoutes } from "./routes/projects";
 import { assetHandlers, appearanceHandlers, variantHandlers } from "./routes/assets";
 import { HttpError, readJsonBody, writeError, writeJson, type JsonBody } from "./routes/json";
+import { MAX_UPLOAD_JSON_BYTES } from "./storage";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const DB_FILE = process.env.DB_FILE ?? "server/data/cyoa.sqlite";
@@ -31,8 +32,8 @@ function splitPath(pathname: string): string[] {
   return pathname.split("/").filter((p) => p.length > 0);
 }
 
-async function handleJsonBody(req: http.IncomingMessage): Promise<JsonBody> {
-  const raw = await readJsonBody(req);
+async function handleJsonBody(req: http.IncomingMessage, maxBytes?: number): Promise<JsonBody> {
+  const raw = await readJsonBody(req, maxBytes);
   return (raw as JsonBody) ?? null;
 }
 
@@ -146,7 +147,9 @@ const server = http.createServer(async (req, res) => {
           // POST /.../appearances/:appearanceId/upload
           if (segs[7] === "upload" && req.method === "POST") {
             const user = await requireUser(auth, req);
-            return await variantHandlers.upload(req, res, user, projectId, assetId, appearanceId, await handleJsonBody(req));
+            // Uploads carry a base64 data URL (≈4/3 the image size), so they
+            // need a larger, route-specific body cap than ordinary JSON.
+            return await variantHandlers.upload(req, res, user, projectId, assetId, appearanceId, await handleJsonBody(req, MAX_UPLOAD_JSON_BYTES));
           }
           // POST /.../appearances/:appearanceId/generate
           if (segs[7] === "generate" && req.method === "POST") {

@@ -25,7 +25,26 @@ import {
 import { resolveProvider, isMissingIntegration } from "../image-provider";
 import * as path from "node:path";
 
-export const ASSET_CATEGORIES = new Set(["background", "character", "prop", "inventory item", "clue", "effect", "overlay", "other"]);
+/**
+ * Creator-facing asset categories (Slice 0).
+ *
+ * These are visual *asset types*, not gameplay roles. Whether an object is
+ * collectible, usable from inventory, stationary, evidence, or a puzzle target
+ * is a gameplay decision for the future runtime/editor — it is NOT encoded here
+ * as a mutually exclusive category. We deliberately dropped the old
+ * "prop"/"inventory item"/"clue" labels for that reason.
+ */
+export const ASSET_CATEGORIES = new Set([
+  "background",
+  "character",
+  "object",
+  "effect",
+  "overlay",
+  "other",
+]);
+
+/** Ordered list the Studio UI uses to populate the category picker. */
+export const ASSET_CATEGORY_ORDER = ["background", "character", "object", "effect", "overlay", "other"];
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -19,6 +19,7 @@ import { projectRoutes } from "../server/routes/projects";
 import { assetHandlers, appearanceHandlers, variantHandlers } from "../server/routes/assets";
 import { readJsonBody, writeError, writeJson, HttpError } from "../server/routes/json";
 import { MockImageProvider, SingularityProvider, isMissingIntegration } from "../server/image-provider";
+import { MAX_UPLOAD_JSON_BYTES } from "../server/storage";
 
 let server: http.Server;
 let baseUrl: string;
@@ -87,7 +88,7 @@ function buildServer(): http.Server {
               throw new HttpError(405, "method not allowed");
             }
             if (segs[7] === "upload" && req.method === "POST") {
-              return await variantHandlers.upload(req, res, await requireUser(auth, req), projectId, assetId, appearanceId, asJson(await readJsonBody(req)));
+              return await variantHandlers.upload(req, res, await requireUser(auth, req), projectId, assetId, appearanceId, asJson(await readJsonBody(req, MAX_UPLOAD_JSON_BYTES)));
             }
             if (segs[7] === "generate" && req.method === "POST") {
               return await variantHandlers.generate(req, res, await requireUser(auth, req), projectId, assetId, appearanceId, asJson(await readJsonBody(req)));
@@ -254,6 +255,35 @@ describe("project ownership", () => {
     const listBob = (await (await fetch(`${baseUrl}/api/projects`, { headers: { Cookie: bob } })).json()) as { projects: Array<{ id: string }> };
     expect(listBob.projects.some((p) => p.id === pid)).toBe(false);
   });
+
+  it("only the owner can delete a project; deletion removes it from the owner's list", async () => {
+    const alice = await signup("alice-del-s0", "secret123");
+    const bob = await signup("bob-del-s0", "secret123");
+    const pid = await createProject(alice, "My Flagship");
+
+    // Non-owner is rejected and the project survives.
+    const othersDel = await fetch(`${baseUrl}/api/projects/${pid}`, {
+      method: "DELETE",
+      headers: { Cookie: bob },
+    });
+    expect(othersDel.status).toBe(403);
+
+    const afterOthers = await fetch(`${baseUrl}/api/projects/${pid}`, { headers: { Cookie: alice } });
+    expect(afterOthers.status).toBe(200);
+
+    // Owner can delete; it then disappears from their list.
+    const ownDel = await fetch(`${baseUrl}/api/projects/${pid}`, {
+      method: "DELETE",
+      headers: { Cookie: alice },
+    });
+    expect(ownDel.status).toBe(200);
+
+    const get = await fetch(`${baseUrl}/api/projects/${pid}`, { headers: { Cookie: alice } });
+    expect(get.status).toBe(404);
+
+    const list = (await (await fetch(`${baseUrl}/api/projects`, { headers: { Cookie: alice } })).json()) as { projects: Array<{ id: string }> };
+    expect(list.projects.some((p) => p.id === pid)).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -307,17 +337,39 @@ describe("Asset -> Appearance -> Variant", () => {
     expect(empty.variants.length).toBe(0);
   });
 
+  it("accepts the creator-facing asset categories and rejects gameplay-role labels", async () => {
+    const cookie = await signup("cat-s0", "secret123");
+    const pid = await createProject(cookie, "P");
+
+    // Approved visual categories round-trip as-is.
+    for (const cat of ["background", "character", "object", "effect", "overlay", "other"]) {
+      const assetId = await createAsset(cookie, pid, `Asset ${cat}`, cat);
+      const res = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}`, { headers: { Cookie: cookie } });
+      const { asset } = (await res.json()) as { asset: { category: string } };
+      expect(asset.category).toBe(cat);
+    }
+
+    // Gameplay-role labels are no longer separate categories; an unknown label
+    // coerces to the safe "other" fallback rather than creating a new role.
+    for (const role of ["prop", "inventory item", "clue"]) {
+      const assetId = await createAsset(cookie, pid, `Legacy ${role}`, role);
+      const res = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}`, { headers: { Cookie: cookie } });
+      const { asset } = (await res.json()) as { asset: { category: string } };
+      expect(asset.category).toBe("other");
+    }
+  });
+
   it("other user cannot mutate assets/appearances", async () => {
     const alice = await signup("alice2-s0", "secret123");
     const bob = await signup("bob2-s0", "secret123");
     const pid = await createProject(alice, "P");
-    const assetId = await createAsset(alice, pid, "Cup", "prop");
+    const assetId = await createAsset(alice, pid, "Cup", "object");
     const appearanceId = await createAppearance(alice, pid, assetId, "Default");
 
     const badCreate = await fetch(`${baseUrl}/api/projects/${pid}/assets`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: bob },
-      body: JSON.stringify({ name: "Evil", category: "prop" }),
+      body: JSON.stringify({ name: "Evil", category: "object" }),
     });
     expect(badCreate.status).toBe(403);
 
@@ -339,7 +391,7 @@ describe("upload privacy and validation", () => {
     const alice = await signup("alice3-s0", "secret123");
     const bob = await signup("bob3-s0", "secret123");
     const pid = await createProject(alice, "P");
-    const assetId = await createAsset(alice, pid, "Cup", "prop");
+    const assetId = await createAsset(alice, pid, "Cup", "object");
     const appearanceId = await createAppearance(alice, pid, assetId, "Default");
 
     const up = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}/appearances/${appearanceId}/upload`, {
@@ -373,6 +425,102 @@ describe("upload privacy and validation", () => {
       body: JSON.stringify({ imageBase64: TINY_PNG_B64, mimeType: "image/bmp" }),
     });
     expect(res.status).toBe(400);
+  });
+
+  it("rejects SVG uploads", async () => {
+    const cookie = await signup("svg-s0", "secret123");
+    const pid = await createProject(cookie, "P");
+    const assetId = await createAsset(cookie, pid, "Sasquatch", "character");
+    const appearanceId = await createAppearance(cookie, pid, assetId, "A");
+
+    const res = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}/appearances/${appearanceId}/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ imageBase64: TINY_PNG_B64, mimeType: "image/svg+xml" }),
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Upload body-size limit (regression): base64 payloads must be allowed past
+// the default 1 MB JSON cap up to the advertised MAX_UPLOAD_BYTES.
+// ---------------------------------------------------------------------------
+
+describe("upload body size limit", () => {
+  it("accepts a valid image whose base64 body exceeds the 1 MB default JSON cap", async () => {
+    const cookie = await signup("kate-s0", "secret123");
+    const pid = await createProject(cookie, "P");
+    const assetId = await createAsset(cookie, pid, "Sasquatch", "character");
+    const appearanceId = await createAppearance(cookie, pid, assetId, "Hiding Badly");
+
+    // Build a > 1 MB base64 payload (≈2.4 MB image) that stays well under
+    // MAX_UPLOAD_BYTES (8 MB). This used to be rejected by the 1 MB JSON cap.
+    const raw = Buffer.alloc(Math.ceil((1024 * 1024) * 1.6), 0); // ≈1.6 MB
+    const b64 = raw.toString("base64");
+    const dataUrl = `data:image/png;base64,${b64}`;
+    expect(dataUrl.length).toBeGreaterThan(1_000_000); // would trip the old cap
+
+    const up = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}/appearances/${appearanceId}/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ imageBase64: dataUrl }),
+    });
+    expect(up.status).toBe(201);
+    const { variant } = (await up.json()) as { variant: { id: string; status: string; storage_path: string | null } };
+    expect(variant.status).toBe("ready");
+    expect(variant.storage_path).toBeTruthy();
+
+    // It persists: fetch the file back via the auth-gated endpoint and confirm
+    // the bytes round-trip.
+    const file = await fetch(`${baseUrl}/api/variants/${variant.id}/file`, { headers: { Cookie: cookie } });
+    expect(file.status).toBe(200);
+    expect(file.headers.get("content-type")).toMatch(/image\/png/);
+    const fetched = Buffer.from(await file.arrayBuffer());
+    expect(fetched.equals(raw)).toBe(true);
+  });
+
+  it("returns a useful 413 (not 500) when an image exceeds MAX_UPLOAD_BYTES", async () => {
+    const cookie = await signup("luke-s0", "secret123");
+    const pid = await createProject(cookie, "P");
+    const assetId = await createAsset(cookie, pid, "Sasquatch", "character");
+    const appearanceId = await createAppearance(cookie, pid, assetId, "A");
+
+    // An image slightly over the 8 MB advertised upload limit. Its base64
+    // body is under MAX_UPLOAD_JSON_BYTES so it reaches the handler, which
+    // must reject with a clean 413 rather than a 500.
+    const raw = Buffer.alloc(8 * 1024 * 1024 + 1, 0);
+    const dataUrl = `data:image/png;base64,${raw.toString("base64")}`;
+
+    const res = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}/appearances/${appearanceId}/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ imageBase64: dataUrl }),
+    });
+    expect(res.status).toBe(413);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toMatch(/image exceeds/);
+  });
+
+  it("returns a useful 413 for a JSON body larger than the upload cap is rejected cleanly", async () => {
+    const cookie = await signup("mara-s0", "secret123");
+    const pid = await createProject(cookie, "P");
+    const assetId = await createAsset(cookie, pid, "Sasquatch", "character");
+    const appearanceId = await createAppearance(cookie, pid, assetId, "A");
+
+    // A base64 body beyond MAX_UPLOAD_JSON_BYTES reaches readJsonBody's own
+    // cap. It must still surface a 413 (useful) rather than a destroyed socket.
+    const raw = Buffer.alloc(Math.ceil(8 * 1024 * 1024 * 1.5), 0);
+    const dataUrl = `data:image/png;base64,${raw.toString("base64")}`;
+
+    const res = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}/appearances/${appearanceId}/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ imageBase64: dataUrl }),
+    });
+    expect(res.status).toBe(413);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toMatch(/payload too large/);
   });
 });
 
@@ -417,7 +565,7 @@ describe("generate via provider (mock)", () => {
   it("rejects empty prompt", async () => {
     const cookie = await signup("frank-s0", "secret123");
     const pid = await createProject(cookie, "P");
-    const assetId = await createAsset(cookie, pid, "X", "prop");
+    const assetId = await createAsset(cookie, pid, "X", "object");
     const appearanceId = await createAppearance(cookie, pid, assetId, "A");
 
     const res = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}/appearances/${appearanceId}/generate`, {
@@ -514,7 +662,7 @@ describe("delete cascade file cleanup", () => {
   it("deleting an asset removes variant files from disk", async () => {
     const cookie = await signup("ian-s0", "secret123");
     const pid = await createProject(cookie, "P");
-    const assetId = await createAsset(cookie, pid, "Cup", "prop");
+    const assetId = await createAsset(cookie, pid, "Cup", "object");
     const appId = await createAppearance(cookie, pid, assetId, "Default");
 
     const up = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}/appearances/${appId}/upload`, {
