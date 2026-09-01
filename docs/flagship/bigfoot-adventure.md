@@ -45,7 +45,7 @@ The misunderstanding must be allowed to fully pay off. The child does not merely
 
 The family dog, Buddy, had already found the plush near the woods and carried it home **before the Act 1 window sighting**. Sasquatch followed the Pepper/Buddy trail to the house and was searching the windows for his comfort object. The frightening silhouette is therefore recontextualized later as funny and sympathetic rather than threatening.
 
-The final puzzle is a quiet, gentle swap. Buddy is asleep near the parents’ room holding the giant plush Pepper. The player trades him a stinky sock so he releases the Pepper without barking and waking the household. The child reunites Sasquatch with the plush, ending on friendship and a joke about not appearing outside bedroom windows at midnight.
+The final puzzle is a quiet, gentle swap. Buddy is asleep near the parents’ room holding the giant plush Pepper. The player trades him a stinky sock so he releases the Pepper without barking and waking the household. The child reunites Sasquatch with the plush, ending on friendship, followed by a small final smell joke that pays off Buddy taking the sock.
 
 ---
 
@@ -88,7 +88,7 @@ The final puzzle is a quiet, gentle swap. Buddy is asleep near the parents’ ro
 5. Coarse brown hair caught high on brush/fence provides another clear clue.
 6. The player follows the trail into the Forest Trail room.
 7. Tracking evidence includes bent fern, a branch broken unusually high, another giant footprint, and crushed/disturbed salal berries or similar PNW vegetation.
-8. Evidence should be discoverable in flexible order rather than a rigid hidden-object sequence. The current intended abstraction is an evidence group, approximately **3 of 4** meaningful clues, with exact threshold tunable by playtesting.
+8. Evidence is discoverable in flexible order rather than as a rigid hidden-object sequence. **Default implementation is 3 of 4 meaningful Forest Trail clues.** The evidence-group abstraction and one-way seen state are locked; the exact numeric threshold may be tuned after child playtesting without redesigning the runtime.
 9. A loose storm-fallen Board can be collected on the Forest Trail before the player knows why it matters.
 10. At the Creek / Footbridge, storm damage has left a bridge gap the child will not cross safely.
 11. Use Board on bridge gap. Board leaves inventory and becomes part of the repaired bridge.
@@ -136,10 +136,10 @@ This is the midpoint pivot: **mystery adventure becomes buddy adventure.**
 3. In the Backyard, the normal puzzle path is:
    - inspect the slightly unusual fake landscaping rock;
    - reveal Shed Key;
-   - unlock Shed;
+   - unlock Shed; the key leaves inventory and the shed remains permanently unlocked;
    - collect Shovel;
    - use Shovel on the storm-softened garden/mud target where the usable pepper is partly buried/inaccessible;
-   - obtain a real Bell Pepper.
+   - obtain a real Bell Pepper; the child leaves/returns the Shovel by the garden or shed rather than carrying a now-useless tool through the rest of the game.
 4. If the player already discovered the key, unlocked the shed, or collected the shovel in Act 2, skip those completed steps naturally.
 5. Sasquatch stays hidden outside while the child goes through the Kitchen back door; a giant Sasquatch casually entering the family Kitchen would break both the story and the quiet household stakes.
 6. In the Kitchen, the child opens the refrigerator and obtains **Cream Cheese**.
@@ -155,7 +155,7 @@ The semantic reveal happens here. Do **not** use the later fuzz/fabric clues to 
 #### Part B — track the actual plush
 
 1. Sasquatch indicates where he remembers losing the plush, and the child and Sasquatch retrace the outdoor route together.
-2. New Act 4 evidence appears in reused rooms, not during Act 2:
+2. Act 4 tracking clues become discoverable in reused rooms; they were physically present but intentionally not interactive/relevant during Act 2:
    - Forest Trail: tuft of white fuzz/stuffing caught in vegetation;
    - Creek / Footbridge: small red/green fabric scrap snagged on the bridge/branch where Buddy dragged the plush.
 3. These clues now confirm and track the **already-understood plush object** rather than causing the semantic realization.
@@ -174,8 +174,8 @@ The semantic reveal happens here. Do **not** use the later fuzz/fabric clues to 
 3. Buddy is asleep near the parents’ bedroom door with the giant Stuffed Pepper (Plush) between his paws / partly in his mouth.
 4. Directly taking it gently fails: Buddy tightens his grip, stirs, opens an eye, or makes a sleepy noise.
 5. The child refuses to continue because barking would wake the parents. There is no fail state or stealth subsystem.
-6. Return to the Bedroom. The previously established dirty-laundry/stinky-sock joke now becomes useful.
-7. Collect **Stinky Sock** if not already available under the active finale state.
+6. Return to the Bedroom. The previously established dirty-laundry/stinky-sock joke now becomes useful. The Stinky Sock has been visible/jokeable earlier in the game but was deliberately **not collectible** before this objective.
+7. Collect **Stinky Sock** now that the finale makes it relevant.
 8. Return to Hallway and use Stinky Sock on Buddy.
 9. Short authored sequence:
    - Buddy’s nose twitches;
@@ -189,7 +189,7 @@ The semantic reveal happens here. Do **not** use the later fuzz/fabric clues to 
 13. A simple tween may move Sasquatch toward the Pepper; no walk-cycle system is required.
 14. Final exchange is warm and brief: the child invites him to visit again, but perhaps not by silently appearing outside the bedroom window at midnight.
 15. Sasquatch seriously agrees/waves goodbye and heads back toward the forest.
-16. Optional final tag: Buddy sleeps happily with the disgusting sock while a parent faintly asks why the hallway smells. Kid blames Buddy. End.
+16. **Keep the final smell tag:** Buddy sleeps happily with the disgusting sock while a parent faintly asks why the hallway smells. The child blames Buddy. Exact wording remains production polish. End.
 
 ---
 
@@ -239,14 +239,14 @@ Conceptual journey:
 - bed with at least child-present / empty presentation;
 - exit to Hallway;
 - dirty laundry / sock-related hotspot established before the finale so the solution is earned rather than appearing conveniently;
-- Stinky Sock collectible behavior enabled when the finale objective makes it relevant;
+- Stinky Sock is visible/jokeable before Act 5 but cannot enter inventory until the Buddy-rescue objective makes it relevant;
 - child dialogue/portrait presentation as needed.
 
 **States:** stormy night before water, stormy night after water/return to bed, morning/day, Act 5 finale interaction state.
 
-**Known interaction beats:** tap bedside/floor to get up; return to bed after resolving thirst; earlier laundry/sock joke should foreshadow Buddy’s sock habit; finale state allows collecting Stinky Sock.
+**Known interaction beats:** tap bedside/floor to get up; return to bed after resolving thirst; earlier laundry/sock joke foreshadows Buddy’s sock habit; finale state enables collecting Stinky Sock.
 
-**Still open:** exact permanent decor, final optional-click inventory, exact sock foreshadowing lines, and whether the sock may be collected harmlessly before Act 5 or only becomes collectible then.
+Exact permanent decorative details and final line wording can be chosen during art/script production; the design-level interactive roles are locked here and in Section 9.
 
 ### Hallway
 
@@ -267,7 +267,7 @@ Keep story/state layers separate where practical:
 - giant Stuffed Pepper (Plush);
 - night/darkness presentation overlay.
 
-**Act 1:** run the brief one-shot lightning/Sasquatch reveal. Window, family photo, and parents’ door can provide optional reactions. Bathroom path is never puzzle-gated.
+**Act 1:** run the brief one-shot lightning/Sasquatch reveal. Window, family photo, and parents’ door provide optional reactions. Bathroom path is never puzzle-gated.
 
 **Morning:** ordinary daylight presentation. Formerly ominous window looks harmless; a click can reinforce uncertainty before the Backyard footprint proves the sighting.
 
@@ -294,8 +294,6 @@ Prefer the author-facing primitive **replace item A with item B** rather than ar
 
 Cup of Water has a deliberate `Drink` inventory action. This resolves the no-avatar problem without adding a generic invisible self target.
 
-Optional personality can come from mirror, toilet, toothbrush, or tub reactions without gating progress.
-
 Only two meaningful story states are required: before thirst resolved and after thirst resolved.
 
 ### Kitchen
@@ -319,7 +317,7 @@ Keep mechanically important elements separate or hotspot-addressable:
 
 **Act 5:** functions as the natural quiet route between Backyard and Hallway while Sasquatch remains outside.
 
-Good optional-interaction territory includes refrigerator contents, family magnets/art, toaster, fruit bowl, freezer/cabinet, and harmless reactions to trying to use inappropriate kitchen objects. These should be funny without turning the room into a second puzzle chain.
+The final optional-click set is in Section 9; do not expand the Kitchen into a second puzzle system just because it has many plausible objects.
 
 ### Backyard
 
@@ -341,15 +339,15 @@ Separate stateful layers where practical:
 - Shovel/shed contents;
 - Sasquatch placement/state during Act 4 and ending.
 
-**Act 2:** giant footprint proves the sighting, two track directions foreshadow Buddy, coarse hair supports the forest direction. Forest progression should require enough evidence without becoming a pixel hunt.
+**Act 2:** giant footprint proves the sighting, two track directions foreshadow Buddy, coarse hair supports the forest direction. Forest progression uses the evidence-group rule without becoming a pixel hunt.
 
 **Act 2 foreshadowing / world rule:** shed, pepper garden, rocks, and fake rock already exist. **Allow early puzzle solving where logically valid.** If the player finds the key/unlocks the shed/gets the shovel early, later acts respect it.
 
-**Act 4 food puzzle:** fake rock → key → shed → shovel → storm-softened garden/mud patch → Bell Pepper, skipping any already-solved steps. The shovel is required because the usable pepper is partly buried/inaccessible in storm-softened mud, not because vegetables arbitrarily require shovels. The child then takes the Bell Pepper into the Kitchen to make the actual food Stuffed Pepper.
+**Key lifecycle:** using Shed Key permanently unlocks/opens the shed and removes the key from inventory. The world state is the durable result; do not leave a useless key occupying inventory.
+
+**Act 4 food puzzle:** fake rock → key → shed → shovel → storm-softened garden/mud patch → Bell Pepper, skipping any already-solved steps. The shovel is required because the usable pepper is partly buried/inaccessible in storm-softened mud, not because vegetables arbitrarily require shovels. After the pepper is freed, the Shovel leaves inventory and is shown leaned/returned by the garden or shed.
 
 **Act 4 handoff:** Sasquatch waits/hides outside while the child uses the Kitchen. The completed Stuffed Pepper (Food) is brought back here; Sasquatch’s hug/sleep pantomime causes the semantic reveal.
-
-Optional reactions include comparing footprints, garden jokes, repeated locked-shed jokes, Buddy pawprint reactions, ordinary-rock jokes before the fake rock pays off, and Sasquatch trying to hide badly around normal backyard features.
 
 Do not create a detective-points/evidence-inventory subsystem.
 
@@ -371,11 +369,9 @@ Separate clue/state assets include:
 - Act 4 fuzz/stuffing clue;
 - Sasquatch placement/state for the Act 4 retrace.
 
-Narrative clue order may naturally read bent fern → branch → print → berries, but inspection order must be flexible. Current evidence-group target is about **3 of 4** meaningful clues before the child concludes Sasquatch went toward the Creek; playtesting may tune the exact threshold while preserving the abstraction.
+Narrative clue order may naturally read bent fern → branch → print → berries, but inspection order must be flexible. **Default threshold is 3 of 4** meaningful clues before the child concludes Sasquatch went toward the Creek. Playtesting may tune the number while preserving the same generic evidence-group data model.
 
 Board is collectable before its purpose is known. Missing it should produce gentle bridge/backtracking hints, not punishment.
-
-Known optional reactions include `No Bigfoot. Just bush.`, `Still bush.`, unknown-mushroom caution, `Suspiciously normal.` rock, and a joke about a tree being too skinny to hide a Sasquatch — which Act 3 pays off.
 
 Act 4 reuses this room with white fuzz/stuffing **after** the child already understands the plush interpretation. That clue tracks the real object; it does not explain the word “stuffed.”
 
@@ -400,8 +396,6 @@ First-arrival rule: **Board + bridge gap → repaired bridge**. Board leaves inv
 If Board was missed, hint toward something long, flat, and sturdy and allow backtracking.
 
 Bridge transition is one-way **broken → repaired** and remains solved for all later acts.
-
-Wrong-item experimentation is safe and funny; examples already proposed include Cup (`Hydrated bridge. Still broken.`), Key (`That would be a very small bridge.`), and Bell Pepper (`I don't think vegetables are load-bearing.`).
 
 Crossing uses an ordinary transition/fade; no walking system or separate far-bank room is required.
 
@@ -436,8 +430,6 @@ Likely separate Sasquatch appearances/states:
 - confused food-pepper reaction as needed;
 - final Stuffed Pepper hug.
 
-Optional interactions include the skinny tree, berries (Sasquatch may eat while the child still thinks he is starving), and a giant footprint confirmation.
-
 Sasquatch should be expressive through raster states, gesture, and vocal SFX rather than requiring fluent TTS dialogue.
 
 ---
@@ -462,7 +454,7 @@ Sasquatch should be expressive through raster states, gesture, and vocal SFX rat
 
 **Inventory:** Board found on Forest Trail.
 
-**Solution:** evidence threshold establishes Creek route; Board used on bridge gap.
+**Solution:** default 3-of-4 evidence threshold establishes Creek route; Board used on bridge gap.
 
 **State change:** bridge repaired permanently; Grove becomes reachable.
 
@@ -474,7 +466,7 @@ Sasquatch should be expressive through raster states, gesture, and vocal SFX rat
 
 **Inventory:** Shed Key → Shovel → Bell Pepper → Cream Cheese → Stuffed Pepper (Food).
 
-**Solution:** fake rock reveals key; key unlocks shed; shovel frees the pepper from storm-softened garden mud; child obtains Cream Cheese from Kitchen; Bell Pepper + Cream Cheese are consumed by the Prep Area recipe to create Stuffed Pepper (Food); completed food is proudly offered to Sasquatch.
+**Solution:** fake rock reveals key; key unlocks shed and leaves inventory; shovel frees the pepper from storm-softened garden mud and is left by the garden/shed afterward; child obtains Cream Cheese from Kitchen; Bell Pepper + Cream Cheese are consumed by the Prep Area recipe to create Stuffed Pepper (Food); completed food is proudly offered to Sasquatch.
 
 **State change:** Sasquatch’s confused hug/sleep pantomime causes the semantic reveal. The child now understands the lost object is a plush stuffed with fuzz. Already-solved backyard substeps remain solved if discovered early.
 
@@ -486,9 +478,9 @@ Sasquatch should be expressive through raster states, gesture, and vocal SFX rat
 
 **Discovery:** child realizes Buddy found the plush outdoors and dragged it home; this also explains Sasquatch’s Act 1 window visit.
 
-**Final item puzzle:** collect Stinky Sock from Bedroom → use on Buddy → Buddy releases Stuffed Pepper (Plush) → collect plush → give to Sasquatch.
+**Final item puzzle:** the Stinky Sock becomes collectible in Bedroom only after the Buddy problem is established → use on Buddy → Buddy releases Stuffed Pepper (Plush) → collect plush → give to Sasquatch.
 
-**State change:** Buddy holds sock, plush returns to Sasquatch, game completes.
+**State change:** Buddy holds sock, plush returns to Sasquatch, game completes; final smell tag pays off the exchange.
 
 ---
 
@@ -499,12 +491,12 @@ Sasquatch should be expressive through raster states, gesture, and vocal SFX rat
 | Cup | Bathroom | Sink/Faucet | Replace with Cup of Water | Removed by replacement |
 | Cup of Water | Result of Cup + Sink | Inventory action: `Drink` | Resolve thirst | Consumed |
 | Board | Forest Trail | Bridge gap | Repair bridge; enable crossing | Removed from inventory, installed in environment |
-| Shed Key | Under fake rock in Backyard | Shed door | Unlock shed | **Open:** retain vs remove after unlock |
-| Shovel | Inside unlocked shed | Storm-softened pepper garden/mud target | Obtain Bell Pepper | **Open:** later retention/disposition |
+| Shed Key | Under fake rock in Backyard | Shed door | Unlock shed | Removed after use; shed stays permanently unlocked/open |
+| Shovel | Inside unlocked shed | Storm-softened pepper garden/mud target | Obtain Bell Pepper | Removed after use; shown returned/leaned by garden or shed |
 | Bell Pepper | Backyard garden | Kitchen Prep Area while Cream Cheese is owned | Create Stuffed Pepper (Food) | Consumed by recipe |
 | Cream Cheese | Kitchen refrigerator | Condition/ingredient at Prep Area | Create Stuffed Pepper (Food) | Consumed by recipe |
 | Stuffed Pepper (Food) | Kitchen Prep Area recipe | Sasquatch | Semantic-reveal comedy; Sasquatch demonstrates hug/sleep meaning | Removed by authored handoff/rejection sequence |
-| Stinky Sock | Bedroom/laundry interaction | Buddy | Buddy swaps plush for sock | Removed from inventory; Buddy holds it |
+| Stinky Sock | Visible/jokeable in Bedroom earlier; collectible only once Act 5 Buddy-rescue objective is active | Buddy | Buddy swaps plush for sock | Removed from inventory; Buddy holds it |
 | Stuffed Pepper (Plush) | Hallway after Buddy swap | Sasquatch | Reunion / ending | Removed from inventory into Sasquatch hug state |
 
 Evidence such as coarse hair, bent fern, white fuzz, and fabric scrap is **environmental discovery state**, not a required clue inventory.
@@ -535,7 +527,8 @@ Required dialogue states/beats include:
 - fuzz/fabric tracking conclusions;
 - Buddy connection realization;
 - quiet-finale warnings/reactions;
-- warm ending.
+- warm ending;
+- final smell-tag reaction.
 
 Most important child beats should have stored spoken audio. Issue #1 does **not** require every final sentence to be scripted before it can close; exact wording may be polished during production as long as the required states, progression, and audio needs are clear.
 
@@ -565,39 +558,68 @@ Audio/presentation: breathing/snoring, tiny sleepy reaction, perhaps nose twitch
 
 Primarily off-screen environmental stakes. Parents’ bedroom door exists from Act 1 so the finale does not invent the constraint late.
 
-Potential audio: faint final off-screen line about the smell if the ending tag is kept.
+The final smell tag is retained: a faint off-screen parent line reacts to the smell after Buddy takes the sock. Exact wording is production polish.
 
 ---
 
-## 9. Known optional/funny interactions
+## 9. Final optional/funny interaction inventory
 
-Optional reactions should reward curiosity without becoming progression requirements. Current locked/proposed examples include:
+These are the **design-level final interaction beats** for Issue #1. Exact wording, timing, and small visual flourishes may be polished during authoring. They are flavor, not progression gates, and should reuse ordinary hotspot/dialogue/state primitives rather than spawning bespoke systems.
 
-- Bedroom laundry/sock foreshadowing and ordinary bedroom-object reactions;
-- Hallway window after lightning: child refuses to investigate too closely;
-- Hallway family photo: warm/funny characterization;
-- parents’ door at night: reinforces that the adults are sleeping;
-- Bathroom mirror/toilet/toothbrush/tub reactions;
-- Kitchen refrigerator-content reactions;
-- Kitchen family magnets/art;
-- Kitchen toaster or other appliance joke;
-- Kitchen fruit bowl / freezer / cabinet reaction;
-- Backyard: compare child footprint to Sasquatch footprint;
-- Backyard: garden joke before it matters;
-- Backyard: repeated locked-shed joke;
-- Backyard: Buddy pawprint reaction;
-- Backyard: terse reactions to ordinary rocks before fake-rock payoff;
-- Forest Trail bushes: `No Bigfoot. Just bush.` / `Still bush.`;
-- Forest Trail mushroom caution;
-- Forest Trail ordinary rock: `Suspiciously normal.`;
-- Forest Trail skinny-tree joke that later pays off;
-- Creek wrong-item jokes;
-- Grove skinny-tree follow-up;
-- Grove berry interaction while the child still thinks Sasquatch is hungry;
-- Grove footprint confirmation;
-- Hallway finale wrong-item/sleepy Buddy reactions without punishment.
+### Bedroom
 
-**Still to finalize for Issue #1:** choose the final 2–4 optional reactions per room where appropriate, especially Bedroom and Kitchen, without turning flavor interactions into additional progression systems.
+1. **Dirty laundry / Stinky Sock foreshadowing:** before Act 5, the child reacts to the especially nasty sock but refuses to collect it. When Act 5 activates, the same hotspot becomes collectible.
+2. **Alarm clock / bedside clock:** a sleepy reaction to the unreasonable hour reinforces the ordinary-night opening.
+3. **Bed/pillow after getting up:** the child is tempted to crawl straight back into bed, but thirst still needs resolving.
+
+### Hallway
+
+1. **Window after the lightning reveal:** the child refuses to press their face against the glass to investigate the giant mystery silhouette.
+2. **Family photo:** a warm/light family joke gives the house personality without introducing another character.
+3. **Parents’ bedroom door:** quiet reaction reinforces that the parents are asleep; in Act 5 it doubles as the reason Buddy cannot be allowed to bark.
+4. **Buddy wrong-item attempts in Act 5:** harmless sleepy/stirring reactions for unsuitable inventory items, with no punishment or fail state.
+
+### Bathroom
+
+1. **Mirror:** sleepy-hair / half-awake reaction.
+2. **Toothbrush:** a small bedtime/morning joke; not another task.
+3. **Tub/shower:** child declines starting a full bath in the middle of the night.
+
+### Kitchen
+
+1. **Family magnets / child art on refrigerator:** a short personal joke or proud/embarrassed reaction.
+2. **Toaster:** a silly appliance reaction; no cooking subsystem.
+3. **Fruit bowl:** child briefly considers whether random fruit could somehow solve the increasingly weird Pepper problem.
+4. **Fridge contents outside the Cream Cheese beat:** one or two changing reactions that make the refrigerator feel like a real family fridge without adding collectible clutter.
+
+### Backyard
+
+1. **Compare the child’s footprint to the giant print:** direct size gag that sells the mystery.
+2. **Buddy pawprints:** an early `Buddy was out here too` observation that becomes meaningful later without explaining the reveal.
+3. **Ordinary landscaping rocks:** terse/repeatable reactions make clicking rocks mildly funny and make the subtly different hide-a-key rock feel fair rather than pixel-hunted.
+4. **Locked shed / later open shed:** state-aware joke before unlocking and a small payoff reaction afterward.
+
+### Forest Trail
+
+1. **Bush:** `No Bigfoot. Just bush.` with a shorter/drier repeat such as `Still bush.`
+2. **Unknown mushroom:** child refuses to eat/touch unidentified forest mushrooms.
+3. **Ordinary rock:** `Suspiciously normal.` or equivalent.
+4. **Skinny cedar/tree:** joke that it could not possibly hide a Sasquatch, explicitly paid off by the Grove hiding gag.
+
+### Creek / Footbridge
+
+1. **Creek water:** child declines trying to swim/wade the storm-swollen crossing.
+2. **Broken bridge before finding/using Board:** a reaction that describes the physical problem clearly enough to hint at needing something long, flat, and sturdy.
+3. **Wrong-item family:** at least two authored harmless jokes for unsuitable inventory items when available; examples include Cup (`Hydrated bridge. Still broken.`) and a clearly unsuitable small item (`That would be a very small bridge.`). Do not require every item to have bespoke dialogue.
+
+### Hidden Cedar Grove
+
+1. **Skinny-tree follow-up:** clicking the hiding tree after the introduction gets a second embarrassed Sasquatch reaction or acknowledgement of the failed disguise.
+2. **Berries:** while the child still thinks Sasquatch is hungry, Sasquatch casually eats a berry, which makes the child even more confident the problem is food.
+3. **Giant footprint / Sasquatch feet:** child can finally compare the evidence to the actual owner.
+4. **Repeat Sasquatch click:** an awkward wave, mirrored gesture, grunt, or other tiny friendly state/audio response makes him feel like a character rather than a quest terminal.
+
+This satisfies the original target of roughly 2–4 playful interactions per room without turning every background object into authored content.
 
 ---
 
@@ -712,7 +734,8 @@ Flagship-specific needs:
 - forest/creek ambience as useful;
 - kitchen interaction/prep SFX as useful;
 - bridge/interaction SFX;
-- final reunion emotional sound cue.
+- final reunion emotional sound cue;
+- final smell-tag parent reaction if voiced rather than text-only.
 
 Exact final script wording is a production task, not a blocker for Issue #1, once required dialogue states/beats and audio coverage are clear.
 
@@ -838,41 +861,33 @@ The Kitchen is **not** added to this first slice merely because it is now part o
 
 ## 15. Issue #1 completion status
 
-The story spine is coherent and substantially locked. Remaining design work is now much narrower than the original issue:
+At the design/requirements level, the flagship now satisfies Issue #1's required deliverables:
 
 - **Premise / target player:** locked enough for implementation.
 - **Beginning-to-ending story outline:** locked, including the literal food Stuffed Pepper before the plush reveal.
 - **Eight-room graph:** locked, including Kitchen as the Hallway ↔ Backyard connector.
-- **Complete puzzle chain:** substantially locked.
-- **Inventory/item-use matrix:** mostly locked; Shed Key, Shovel, and early Stinky Sock disposition/timing remain open.
+- **Complete puzzle chain:** locked at design level.
+- **Inventory/item-use matrix:** locked at design level, including post-use disposition for key, shovel, sock, and both Pepper items.
 - **Characters/dialogue-state map:** required structural states/beats are identified; exact final prose is production polish, not an Issue #1 blocker.
-- **Optional interactions:** many are identified; final 2–4-per-room selection still needs a pass.
+- **Optional interactions:** final design-level 2–4-per-room inventory is defined in Section 9.
 - **Visual asset list:** consolidated and updated for Kitchen/food Stuffed Pepper.
 - **Audio/TTS requirements:** structurally identified; exact recorded/generated line inventory can be finalized during authoring.
 - **Runtime requirements:** derived and classified here.
 - **First vertical slice:** locked as Bedroom → Hallway → Bathroom → Bedroom.
 
-Issue #1 should close when another developer can explain the exact playthrough, puzzle/state flow, required content states, and smallest reusable runtime without reconstructing decisions from chats. It should **not** stay open merely because final joke wording, mascot branding, or every production audio line has not been polished.
+The Forest Trail starts at a **3-of-4** evidence threshold, but the exact number is intentionally a playtest tuning value rather than an architectural promise.
+
+Issue #1 can close once this canonical document is merged: another developer can explain the full playthrough, puzzle/state flow, required content states, and smallest reusable runtime without reconstructing decisions from chats. It should **not** stay open merely because final joke wording, mascot branding, background decoration, or every production audio line has not been polished.
 
 ---
 
 ## 16. Open design questions
 
-These are intentionally unresolved; do not infer answers without product-owner approval.
-
-### Blocking or useful to settle before Issue #1 closes
-
-1. What final 2–4 optional reactions per room make the interaction inventory, especially Bedroom and Kitchen?
-2. Should Stinky Sock be collectible early, or only become collectible when Act 5 makes it relevant?
-3. After Shed Key unlocks the shed, is it removed from inventory or harmlessly retained?
-4. After the Shovel frees the Bell Pepper, does the Shovel remain in inventory or leave the carried set?
-5. Is the Forest Trail evidence threshold definitively 3-of-4, or should the document explicitly leave the exact number playtest-tunable while locking the evidence-group abstraction?
-6. Does the optional parent/smell ending tag improve the ending enough to keep?
-
-### Non-blocking production/product questions
+No remaining question below blocks Issue #1 or PR #8. These are production/product decisions that can be made when they become useful:
 
 - What is Sasquatch’s external/canonical mascot or brand name, if any, separate from the five in-game player choices?
 - What are the exact final voiced lines and which optional reactions receive audio versus text-only fallback?
 - What exact permanent decorative details fill each background beyond the interaction-relevant composition already specified?
+- Does child playtesting suggest changing the Forest Trail threshold from the initial 3-of-4 default?
 
-As decisions lock, update this document and leave a concise `Locked decision` comment on Issue #1 so the issue remains the historical decision log while this file remains the current truth.
+As future decisions lock, update this document and leave concise historical notes on the relevant implementation/design issues rather than allowing chat history to become the only source of truth.
