@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "A TypeScript framework for building choose-your-own-adventure games with rooms, inventory items, persistent/consumable items, and a backtracking map.",
   "type": "module",
+  "packageManager": "pnpm@10.33.3",
   "scripts": {
     "dev": "vite",
     "dev:api": "tsx server/index.ts",

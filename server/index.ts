@@ -1,7 +1,7 @@
 /**
  * CYOA API server — bare `node:http` + tiny router.
  *
- * Run with:  npm run dev:api   (tsx server/index.ts)
+ * Run with:  pnpm run dev:api   (tsx server/index.ts)
  * Listens on PORT (default 8787). The Vite dev server proxies /api here so the
  * browser talks same-origin and the httpOnly session cookie is accepted.
  *

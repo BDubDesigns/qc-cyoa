@@ -35,6 +35,6 @@ All of these are server-side only. The API never returns them. **No mock fallbac
 
 ## Verification checklist (run once secrets are wired)
 
-- `SINGULARITY_API_URL` + `SINGULARITY_API_KEY` set in shell (plus whatever else the real contract needs), then `npm run dev:api`.
+- `SINGULARITY_API_URL` + `SINGULARITY_API_KEY` set in shell (plus whatever else the real contract needs), then `pnpm run dev:api`.
 - In Studio: create project → asset → appearance → enter prompt → Generate.
 - A new `asset_variants` row appears with `status=ready`, `provider_id=singularity`, `model_id=<env>`, `prompt` snapshot, and `storage_path` pointing at `server/data/assets/<id>.png` served via `GET /api/variants/:id/file`.

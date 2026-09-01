@@ -46,17 +46,17 @@ a complete demo game, *The Abandoned Lighthouse*, that exercises every feature.
 ## Quick start
 
 ```bash
-npm install
+pnpm install
 
 # Terminal 1 — the API + SQLite backend (stores authored stories, accounts)
-npm run dev:api        # http://127.0.0.1:8787  (nodemon-free; rerun to restart)
+pnpm run dev:api        # http://127.0.0.1:8787  (nodemon-free; rerun to restart)
 
 # Terminal 2 — the frontend (proxies /api to the backend)
-npm run dev            # open http://localhost:5173
+pnpm run dev            # open http://localhost:5173
 
-npm test               # run the full test suite (Vitest)
-npm run typecheck      # strict TS check for src + server
-npm run build          # production build to ./dist
+pnpm test               # run the full test suite (Vitest)
+pnpm run typecheck      # strict TS check for src + server
+pnpm run build          # production build to ./dist
 ```
 
 ## Author, publish, and share a story

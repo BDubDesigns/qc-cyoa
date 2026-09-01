@@ -35,4 +35,4 @@ Issue #1 requirements source.
 
 - Keep logic data-driven, declarative, serializable, and safe to interpret — no arbitrary
   author executable code in ordinary gameplay.
-- `npm run typecheck`, `npm test`, and `npm run build` must pass for non-trivial changes.
+- `pnpm run typecheck`, `pnpm test`, and `pnpm run build` must pass for non-trivial changes.
