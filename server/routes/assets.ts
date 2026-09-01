@@ -19,6 +19,8 @@ import {
   variantFilePath,
   writeVariantFile,
   assetDir,
+  unlinkVariantFile,
+  unlinkVariantsFor,
 } from "../storage";
 import { resolveProvider, isMissingIntegration } from "../image-provider";
 import * as path from "node:path";
@@ -39,29 +41,6 @@ function assertOwnerForAsset(projectId: string, assetId: string, user: UserLike)
   if (!row) throw new HttpError(404, "asset not found");
   if (row.project_id !== projectId) throw new HttpError(404, "asset not found");
   return { assetId: row.id, projectId };
-}
-
-/** Best-effort unlink of a stored variant file, contained to the asset dir. */
-function unlinkVariantFile(storagePath: string | null): void {
-  if (!storagePath) return;
-  try {
-    const abs = path.resolve(storagePath);
-    if (abs.startsWith(assetDir())) fs.unlinkSync(abs);
-  } catch {
-    // ignore
-  }
-}
-
-/**
- * Collect every variant storage_path under a given appearance or asset and
- * unlink those files best-effort. Used before DELETE so DB cascade doesn't
- * orphan files on disk.
- */
-function unlinkVariantsFor(query: string, param: string): void {
-  const rows = getDb()
-    .prepare(`SELECT storage_path FROM asset_variants WHERE appearance_id IN (${query})`)
-    .all(param) as Array<{ storage_path: string | null }>;
-  for (const r of rows) unlinkVariantFile(r.storage_path);
 }
 
 function assertOwnerForAppearance(

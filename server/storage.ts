@@ -8,6 +8,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { getDb } from "./db";
 
 const DEFAULT_ASSET_DIR = "server/data/assets";
 
@@ -68,6 +69,34 @@ export function mimeForPath(storagePath: string | null): string {
     default:
       return "image/png";
   }
+}
+
+/**
+ * Best-effort unlink of a stored variant file, contained to the asset dir.
+ * Pass the persisted `storage_path` (relative or absolute).
+ */
+export function unlinkVariantFile(storagePath: string | null): void {
+  if (!storagePath) return;
+  try {
+    const abs = path.resolve(storagePath);
+    if (abs.startsWith(assetDir())) fs.unlinkSync(abs);
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Collect every variant storage_path whose appearance_id is in the given
+ * subquery result and unlink those files best-effort. Used before DELETE so
+ * DB cascade doesn't orphan files on disk.
+ *
+ * Example: unlinkVariantsFor("SELECT id FROM asset_appearances WHERE asset_id = ?", assetId)
+ */
+export function unlinkVariantsFor(query: string, param: string): void {
+  const rows = getDb()
+    .prepare(`SELECT storage_path FROM asset_variants WHERE appearance_id IN (${query})`)
+    .all(param) as Array<{ storage_path: string | null }>;
+  for (const r of rows) unlinkVariantFile(r.storage_path);
 }
 
 /** Allowed upload mimes — SVG excluded for now (see review: unsanitized SVG can carry active content). */

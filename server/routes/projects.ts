@@ -8,6 +8,7 @@ import * as crypto from "node:crypto";
 import { getDb } from "../db";
 import { HttpError, writeJson, type JsonBody } from "./json";
 import type { UserLike } from "./games";
+import { unlinkVariantsFor } from "../storage";
 
 export interface ProjectHandlers {
   list: (req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse, user: UserLike) => void;
@@ -55,6 +56,11 @@ export function projectRoutes(): ProjectHandlers {
 
     remove(_req, res, user, id) {
       loadProjectOrThrow(id, user);
+      // unlink every descendant variant file before the DB cascade removes rows
+      unlinkVariantsFor(
+        "SELECT id FROM asset_appearances WHERE asset_id IN (SELECT id FROM assets WHERE project_id = ?)",
+        id,
+      );
       getDb().prepare("DELETE FROM projects WHERE id = ?").run(id);
       writeJson(res, 200, { ok: true });
     },

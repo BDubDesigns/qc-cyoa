@@ -439,22 +439,21 @@ describe("generate via provider (mock)", () => {
     } catch (err) {
       threw = true;
       expect(isMissingIntegration(err)).toBe(true);
-      expect((err as Error).message).toContain("SINGULARITY_API_URL");
+      expect((err as Error).message).toContain("private API contract is unavailable");
     }
     expect(threw).toBe(true);
   });
 
-  it("fails closed BEFORE any network call when the contract is unknown", async () => {
-    // Even with URL + key configured, an unknown contract must refuse to
-    // guess — no request is made, and the error names SINGULARITY_CONTRACT.
-    const s = new SingularityProvider({ apiUrl: "https://singularity.invalid/gen", apiKey: "secret", contract: undefined });
+  it("is a fail-closed stub: NEVER guesses a vendor schema or makes a network call, even with config", async () => {
+    // Even if someone passes URL/key/model, the adapter must not invent a
+    // contract — it throws the sentinel before any request.
+    const s = new SingularityProvider({ apiUrl: "https://singularity.invalid/gen", apiKey: "secret", modelId: "x" });
     let threw = false;
     try {
       await s.generate({ prompt: "x" });
     } catch (err) {
       threw = true;
       expect(isMissingIntegration(err)).toBe(true);
-      expect((err as Error).message).toContain("SINGULARITY_CONTRACT");
     }
     expect(threw).toBe(true);
   });
@@ -534,6 +533,44 @@ describe("delete cascade file cleanup", () => {
     });
     expect(del.status).toBe(200);
     expect(fs.existsSync(expectedAbs)).toBe(false);
+  });
+
+  it("deleting a project removes all descendant variant files from disk", async () => {
+    const cookie = await signup("jill-s0", "secret123");
+    const pid = await createProject(cookie, "P");
+    const assetId = await createAsset(cookie, pid, "Sasquatch", "character");
+    const appId = await createAppearance(cookie, pid, assetId, "Hiding Badly");
+
+    const up1 = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}/appearances/${appId}/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ imageBase64: TINY_PNG_DATAURL }),
+    });
+    const { variant: v1 } = (await up1.json()) as { variant: { id: string } };
+    const up2 = await fetch(`${baseUrl}/api/projects/${pid}/assets/${assetId}/appearances/${appId}/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ imageBase64: TINY_PNG_DATAURL }),
+    });
+    const { variant: v2 } = (await up2.json()) as { variant: { id: string } };
+
+    const assetDir = process.env.ASSET_DIR!;
+    const f1 = path.join(assetDir, `${v1.id}.png`);
+    const f2 = path.join(assetDir, `${v2.id}.png`);
+    expect(fs.existsSync(f1)).toBe(true);
+    expect(fs.existsSync(f2)).toBe(true);
+
+    const del = await fetch(`${baseUrl}/api/projects/${pid}`, {
+      method: "DELETE",
+      headers: { Cookie: cookie },
+    });
+    expect(del.status).toBe(200);
+    expect(fs.existsSync(f1)).toBe(false);
+    expect(fs.existsSync(f2)).toBe(false);
+
+    // project gone entirely
+    const get = await fetch(`${baseUrl}/api/projects/${pid}`, { headers: { Cookie: cookie } });
+    expect(get.status).toBe(404);
   });
 });
 

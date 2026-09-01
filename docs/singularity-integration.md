@@ -6,7 +6,7 @@ This document records the concrete integration details that are **not yet availa
 
 - `server/image-provider.ts` — small `ImageProvider` interface with `generate({ prompt, width?, height? })`.
 - `MockImageProvider` — no-network mock used by all automated tests (no paid calls), reachable **only** through explicit `IMAGE_PROVIDER=mock` config.
-- `SingularityProvider` — server-side adapter, **fail-closed**: until the real contract is supplied it throws `MISSING_SINGULARITY_INTEGRATION` **before making any network request**. It never guesses a vendor contract.
+- `SingularityProvider` — server-side adapter, a **fail-closed stub**: it does **not** guess endpoints, auth headers, request bodies, or response schemas. Until the real contract is supplied, every `generate()` throws `MISSING_SINGULARITY_INTEGRATION` **before making any network request**.
 
 Swapping providers touches only `resolveProvider()` + the adapter file; asset / appearance / variant concepts are provider-agnostic.
 
@@ -16,11 +16,11 @@ Brandon, once you have the private Singularity image-generation docs or a sample
 
 1. **Endpoint** — the full HTTPS URL for image generation (stored as `SINGULARITY_API_URL`). Example shape: `https://api.singularity.example/v1/images/generate`.
 2. **Auth header** — confirmation that `Authorization: Bearer <SINGULARITY_API_KEY>` is correct, or the actual header name/value format.
-3. **Request JSON** — field names for prompt / dimensions / model / count (our adapter currently sends `{ prompt, width, height, model }` as a starting guess).
-4. **Response JSON** — field names for the returned image bytes (we support two contracts, `imageBase64` and `openai`; anything else is a one-line fix in `SingularityProvider.generate`).
+3. **Request JSON** — field names for prompt / dimensions / model / count.
+4. **Response JSON** — field names for the returned image bytes (currently the adapter is a stub; whatever the real shape is becomes the implementation).
 5. **Model ids** — the model strings to put in `SINGULARITY_MODEL_ID` and to surface in the Studio selector (e.g. `singularity-raster-v1`, `singularity-svg-v1`).
 
-With those 5 items, set `SINGULARITY_CONTRACT` to the matching schema and the remaining integration is a few-line patch in `server/image-provider.ts` — no asset-model redesign — then we can run a real `POST /api/projects/:id/assets/:assetId/appearances/:appearanceId/generate` and see the produced `AssetVariant` with `status=ready`.
+With those 5 items, implement `SingularityProvider.generate()` **exactly** to that contract (the seam is ready; the method is currently a fail-closed stub). Then we can run a real `POST /api/projects/:id/assets/:assetId/appearances/:appearanceId/generate` and see the produced `AssetVariant` with `status=ready`.
 
 ## Env
 
@@ -28,7 +28,6 @@ With those 5 items, set `SINGULARITY_CONTRACT` to the matching schema and the re
 SINGULARITY_API_KEY=...        # never committed
 SINGULARITY_API_URL=https://... # provided privately
 SINGULARITY_MODEL_ID=...        # optional, defaults to "singularity-default"
-SINGULARITY_CONTRACT=imageBase64|openai   # REQUIRED once the contract is known
 IMAGE_PROVIDER=singularity      # optional; omit to auto-detect (mock is NOT a prod fallback)
 ```
 
