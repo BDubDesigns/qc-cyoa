@@ -11,7 +11,9 @@ export function navBar(active: string): HTMLElement {
   const links: Array<{ label: string; route: Route; key: string }> = [
     { label: "Home", route: { name: "home" }, key: "home" },
     { label: "Browse", route: { name: "browse" }, key: "browse" },
-    { label: "Studio", route: { name: "studio" }, key: "studio" },
+    // Projects is the current creator workflow (Slice 0 asset library). The
+    // legacy CYOA Studio is intentionally not in the primary nav — it's
+    // surfaced from Home as a clearly-labelled legacy tool.
     { label: "Projects", route: { name: "projects" }, key: "projects" },
     { label: "Account", route: { name: "account" }, key: "account" },
   ];

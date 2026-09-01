@@ -473,6 +473,14 @@ body {
   display: inline-block;
   text-decoration: none;
 }
+.home-legacy {
+  margin: 20px auto 0;
+  font-size: 0.85rem;
+}
+.home-legacy a {
+  color: var(--muted);
+  text-decoration: underline;
+}
 
 /* -------------------------------- browse --------------------------------- */
 

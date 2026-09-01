@@ -98,26 +98,34 @@ function renderHome(): void {
       const sec = document.createElement("section");
       sec.className = "app-panel panel home-hero";
       const h = document.createElement("h2");
-      h.textContent = "Choose Your Own Adventure";
+      h.textContent = "Illustrated point-and-click adventure creator";
       const p = document.createElement("p");
       p.textContent =
-        "Author stories in the Studio, publish them, and share a play link. Browse published tales or play a bundled demo.";
+        "qc-cyoa is a creator studio for illustrated, voiced point-and-click adventures. Build a project, then create assets and their appearances to hold generated or uploaded variants.";
       const links = document.createElement("div");
       links.className = "home-links";
-      const studio = document.createElement("a");
-      studio.href = "#/studio";
-      studio.className = "primary";
-      studio.textContent = "Author a story →";
       const projects = document.createElement("a");
       projects.href = "#/projects";
-      projects.className = "primary ghost";
-      projects.textContent = "Projects →";
+      projects.className = "primary";
+      projects.textContent = "Open Projects →";
       const browse = document.createElement("a");
       browse.href = "#/browse";
       browse.className = "primary ghost";
-      browse.textContent = "Browse stories";
-      links.append(studio, projects, browse);
+      browse.textContent = "Browse archives";
+      const play = document.createElement("a");
+      play.href = "#/play";
+      play.className = "primary ghost";
+      play.textContent = "Play a demo";
+      links.append(projects, browse, play);
       sec.append(h, p, links);
+
+      // Clearly demoted: the old CYOA editor is retained for development /
+      // regression, but is NOT the current authoring experience.
+      const legacy = document.createElement("p");
+      legacy.className = "muted home-legacy";
+      legacy.innerHTML =
+        'Legacy <a href="#/studio">CYOA Studio</a> — the older story editor — is still available for development and regression testing.';
+      sec.appendChild(legacy);
       return sec;
     })(),
   );

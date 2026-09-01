@@ -1,8 +1,27 @@
-# Choose Your Own Adventure Framework
+# qc-cyoa
 
-A TypeScript framework for building **choose-your-own-adventure** games. It
-provides an engine (UI-agnostic) plus a ready-made web renderer, and ships with
-a complete demo game, *The Abandoned Lighthouse*, that exercises every feature.
+**An illustrated, voiced, point-and-click adventure creator.** qc-cyoa is a
+creator studio for the kind of child-friendly, room-based adventure games in the
+spirit of classic point-and-click adventures — a SCUMM-like runtime with a
+CYOA-like learning curve. Authors build projects, create assets and their
+appearances, generate or upload variants, and compose them into a flagship
+adventure. Non-programmers can make a simple game quickly and discover more power
+only as they need it.
+
+Canonical product docs (the source of truth for scope — read before proposing
+engine or Studio changes):
+
+- [`docs/product/engine-boundaries.md`](docs/product/engine-boundaries.md) — what
+  the product is, what it is not, and the feature decision test.
+- [`docs/roadmap.md`](docs/roadmap.md) — the current implementation sequence.
+- [`docs/flagship/bigfoot-adventure.md`](docs/flagship/bigfoot-adventure.md) —
+  the flagship Pacific Northwest Bigfoot adventure design.
+
+> **Legacy.** Sections below describe the older *Choose Your Own Adventure*
+> engine framework, its demo games, and the legacy Studio. These are retained for
+> development and regression purposes; they are **not** the current authoring
+> UX. The current creator workflow is the **Projects** asset library (Slice 0).
+
 
 ## Features
 
@@ -59,7 +78,30 @@ pnpm run typecheck      # strict TS check for src + server
 pnpm run build          # production build to ./dist
 ```
 
-## Author, publish, and share a story
+## Current creator workflow (Slice 0)
+
+Open `http://localhost:5173`, use the **Account** page to sign up, then head to
+the **Projects** page. There you create a **project**, then build its **asset**
+library: each asset is a logical object (e.g. Sasquatch, a Cup, a bedroom
+background) that has one or more **appearances**; each appearance holds
+**variants** you either **upload** an image to or **generate** via a provider.
+Select the active variant per appearance, and the project is saved server-side.
+
+Asset categories are visual types, not gameplay roles: `background`, `character`,
+`object`, `effect`, `overlay`, `other`. Whether an object is collectible, usable
+from inventory, stationary, evidence, or a puzzle target is decided by the future
+runtime/editor — not by its category.
+
+- Publishing/cloud storage needs a (temporary, test-only) account; later it will
+  move to better-auth.
+- Auth today is minimal username/password (scrypt-hashed) behind a swappable
+  `AuthService`; CSRF and rate-limiting are intentionally deferred to the
+  better-auth swap.
+
+## Legacy: author, publish, and share a story
+
+The following describes the older **CYOA Studio** workflow, retained for
+development and regression. It is **not** the current authoring UX.
 
 Open `http://localhost:5173`, use the **Account** page to sign up, then head to
 the **Studio**. There you can build a story with a structured editor (game meta,
@@ -68,8 +110,6 @@ and a **validation rail** (errors block publishing). Hit **Publish** and your
 story is stored in the SQLite database; **copy the play link** (`…/?game=<id>`)
 and share it — readers open it and play straight from the server.
 
-- Publishing/cloud storage needs a (temporary, test-only) account; later it will
-  move to better-auth.
 - The bundled demo games (`lighthouse`, `post_office`) are always available and
   play offline even if the API is down.
 - Auth today is minimal username/password (scrypt-hashed) behind a swappable
@@ -273,7 +313,9 @@ server/                  # Node API (bare node:http + node:sqlite)
   db.ts                  # SQLite schema/helpers (node:sqlite)
   auth-service.ts        # AuthService seam + credentials/session impl
   password.ts            # scrypt hashing (temporary, pre-better-auth)
-  routes/ auth.ts games.ts json.ts
+  storage.ts             # asset file storage (variant files on disk)
+  image-provider.ts      # provider seam: mock + Singularity (fail-closed stub)
+  routes/ auth.ts games.ts json.ts projects.ts assets.ts
 src/
   core/
     types.ts      # GameDefinition, RoomDef, ItemDef, Door, ItemUse, GameEffect
@@ -284,13 +326,14 @@ src/
     lighthouse.ts # Demo game #1: "The Abandoned Lighthouse" (points-scored)
     post_office.ts# Demo game #2: "The Flooded Post Office" (time-scored)
   web/
-    main.ts       # hash router -> play/studio/browse/account
+    main.ts       # hash router -> play/studio/browse/account/projects
     api.ts        # FE fetch client (the only API touchpoint)
     router.ts     # tiny hash router + play/studio URL builders
     registry.ts   # bundled demo games (offline fallback)
     play.ts       # play screen (autosave/resume/timer)
     browse.ts     # published + demo games listing
     account.ts    # temporary login/signup + my-games
+    projects.ts   # Slice 0: project shell + asset library UI
     render.ts     # room view, room items to take, inventory, map, ended screen
     styles.css    # theming (incl. studio + nav)
   studio/
@@ -302,6 +345,7 @@ tests/
   validate.test.ts# author-time validation (validateGame / inspectGame)
   games.test.ts   # both demo games: connectivity + post_office mechanics
   server.test.ts  # API integration: auth round-trip, games CRUD, ownership
+  slice0.test.ts  # Slice 0: projects/assets/appearances/variants + upload
   studio.test.ts  # draft-buffer helper logic
   helpers.ts      # tiny game builders for the engine unit tests
 ```
@@ -314,7 +358,7 @@ runtime, CYOA-like learning curve), records the engine primitives that fit the p
 hard non-goals, and a decision test for future engine/Studio features. **Read it before
 making product-level engine or Studio architecture changes** (see `AGENTS.md`, the
 agent-instruction pointer). `docs/roadmap.md` is the canonical current implementation
-sequence.
+sequence, and `docs/flagship/bigfoot-adventure.md` is the current flagship game design.
 
 The docs in `plans/` (`target-genre-and-editor.md`, `research-he-games.md`,
 `history-and-architecture.md`) are **earlier pivot/handoff documents retained for
