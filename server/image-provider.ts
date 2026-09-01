@@ -79,7 +79,7 @@ export class MockImageProvider implements ImageProvider {
 export interface SingularityConfig {
   /** Reserved for the real integration: full HTTPS image-generation endpoint. */
   apiUrl?: string;
-  /** Reserved for the real integration: bearer key (server-side only). */
+  /** Reserved for the real integration: server-side credential/API key. */
   apiKey?: string;
   /** Model id to record in provenance once wired. */
   modelId?: string;
