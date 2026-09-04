@@ -1087,9 +1087,12 @@ button.aimable.active-aim {
   padding: 8px 10px;
 }
 .project-shell select {
+  height: 38px;
+  font-size: 0.95rem;
+}
+.project-shell .projects-create > select {
   flex: 0 1 160px;
   min-width: min(100%, 150px);
-  font-size: 0.95rem;
 }
 .project-shell input[type="file"] {
   max-width: 100%;
