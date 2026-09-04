@@ -10,7 +10,9 @@ export type Route =
   | { name: "studio"; game?: string }
   | { name: "browse" }
   | { name: "account" }
-  | { name: "home" };
+  | { name: "home" }
+  | { name: "projects" }
+  | { name: "project"; projectId: string };
 
 export function parseLocation(hash: string, search: string): Route {
   // If a plain query ?game= exists and there's no hash route, default to play.
@@ -35,6 +37,10 @@ export function parseLocation(hash: string, search: string): Route {
       return { name: "browse" };
     case "account":
       return { name: "account" };
+    case "projects":
+      return { name: "projects" };
+    case "project":
+      return { name: "project", projectId: params.get("project") ?? params.get("id") ?? "" };
     default:
       return { name: "home" };
   }
@@ -51,6 +57,10 @@ export function routeToHash(route: Route): string {
       return "#/browse";
     case "account":
       return "#/account";
+    case "projects":
+      return "#/projects";
+    case "project":
+      return `#/project?project=${encodeURIComponent(route.projectId)}`;
     case "home":
       return "#/";
   }

@@ -4,6 +4,13 @@ Guidance for coding and planning agents working in this repository. This file st
 purposefully short — it is the **instruction pointer surface**, not the documentation
 itself.
 
+## Before starting issue or prompt work
+
+Check the working tree first and preserve any existing local work. For new work,
+fetch the latest `origin/master` and create the dedicated branch from that updated
+remote base before making changes. If the local tree or remote base is not clean or
+unambiguous, stop and resolve that before editing.
+
 ## Before you change engine or Studio architecture
 
 **Read `docs/product/engine-boundaries.md` first.** It is the canonical product
@@ -35,4 +42,4 @@ Issue #1 requirements source.
 
 - Keep logic data-driven, declarative, serializable, and safe to interpret — no arbitrary
   author executable code in ordinary gameplay.
-- `npm run typecheck`, `npm test`, and `npm run build` must pass for non-trivial changes.
+- `pnpm run typecheck`, `pnpm test`, and `pnpm run build` must pass for non-trivial changes.

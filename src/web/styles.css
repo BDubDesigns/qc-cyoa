@@ -395,6 +395,17 @@ body {
   background: var(--panel-2);
   filter: none;
 }
+.primary.danger {
+  background: linear-gradient(180deg, var(--bad), #a33);
+  color: #fff;
+}
+.primary.danger:hover {
+  filter: brightness(1.05);
+}
+.primary.danger:disabled {
+  background: var(--bad);
+  opacity: 0.5;
+}
 
 .muted {
   color: var(--muted);
@@ -461,6 +472,14 @@ body {
 .home-links a {
   display: inline-block;
   text-decoration: none;
+}
+.home-legacy {
+  margin: 20px auto 0;
+  font-size: 0.85rem;
+}
+.home-legacy a {
+  color: var(--muted);
+  text-decoration: underline;
 }
 
 /* -------------------------------- browse --------------------------------- */
@@ -968,4 +987,140 @@ button.aimable.active-aim {
 }
 .place-row input {
   width: 70px;
+}
+
+/* ---------------- Projects + Asset Library (Slice 0) ------------------ */
+.projects-shell, .project-shell { display: flex; flex-direction: column; gap: 18px; }
+.project-head h2, .projects-shell h2 { margin: 0 0 6px; }
+.projects-create { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+.projects-create .input { flex: 1 1 220px; min-width: min(100%, 180px); }
+.input { background: var(--panel-2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 8px 10px; font-size: 0.95rem; }
+.input:focus { outline: 2px solid var(--accent-2); border-color: var(--accent-2); }
+.project-list { display: flex; flex-direction: column; gap: 10px; }
+.project-row { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.project-info { flex: 1; min-width: 0; }
+.project-desc { margin: 4px 0 0; }
+.project-edit { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+.project-edit .input { flex: 1 1 220px; min-width: min(100%, 180px); }
+
+.asset-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin: 0 0 14px; }
+.asset-filter-field { display: flex; flex: 1 1 220px; flex-direction: column; gap: 4px; min-width: min(100%, 180px); color: var(--muted); font-size: 0.78rem; }
+.asset-filter-field:last-child { flex: 0 1 180px; }
+.asset-filter-field .input,
+.asset-filter-field select { width: 100%; }
+
+.asset-list { display: flex; flex-direction: column; gap: 16px; }
+.asset-card { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.asset-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 56px; padding: 10px 14px; }
+.asset-head > strong { min-width: 0; font-size: 1rem; overflow-wrap: anywhere; }
+.asset-cat { color: var(--accent); background: rgba(232,177,79,0.1); border: 1px solid var(--accent-2); border-radius: 999px; padding: 3px 8px; font-size: 0.78rem; text-transform: capitalize; }
+.asset-delete { margin-left: auto; }
+.asset-desc { margin: 6px 0 0; width: 100%; }
+.asset-body { border-top: 1px solid var(--line); padding: 0 14px 14px; }
+.asset-body[hidden] { display: none; }
+.asset-toggle { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 6px 9px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); cursor: pointer; font: inherit; font-size: 0.8rem; font-weight: 600; }
+.asset-toggle:hover { background: var(--panel-2); border-color: var(--accent-2); }
+.asset-toggle:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.asset-toggle-icon { color: var(--accent); font-size: 1rem; line-height: 1; }
+.asset-card .appearances { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+.appearance-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.appearance-form .input { flex: 1 1 220px; min-width: min(100%, 180px); }
+
+.appearance-node { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.appearance-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.appearance-desc { margin: 4px 0 0; width: 100%; }
+.variants-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
+.variant-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.variant-card.active { border-color: var(--good); box-shadow: 0 0 0 1px var(--good); }
+.variant-thumb { width: 100%; aspect-ratio: 1 / 1; background: var(--bg); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.85rem; }
+.variant-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.variant-thumb.pending, .variant-thumb.failed { background: var(--panel-2); }
+.variant-meta { font-size: 0.8rem; }
+.variant-prompt { margin: 4px 0 0; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.variant-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.small { font-size: 0.8rem; padding: 6px 10px; }
+.gen-row, .upload-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+.gen-row .gen-prompt { flex: 1 1 220px; min-width: min(100%, 220px); }
+.ghost.danger { color: var(--bad); border-color: var(--bad); }
+.ghost.danger:hover { background: rgba(224,108,108,0.12); }
+.notice-line { background: var(--panel-2); border-left: 3px solid var(--line); padding: 8px 10px; border-radius: 6px; margin-top: 8px; }
+.notice-line.error { border-left-color: var(--bad); }
+.notice-line.info { border-left-color: var(--good); }
+.account-layout, .browse-layout { display: flex; flex-direction: column; gap: 16px; }
+.auth-form { display: flex; flex-direction: column; gap: 10px; }
+.form-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
+.field input, .field textarea, .field select { background: var(--panel-2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 8px 10px; }
+.app-nav { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.nav-link { color: var(--muted); text-decoration: none; font-weight: 600; padding: 6px 10px; border-radius: 8px; }
+.nav-link.active { color: var(--accent); background: var(--panel-2); }
+.home-hero { text-align: center; padding: 28px 20px; }
+.home-links { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+.section-title { margin: 0 0 8px; font-size: 1.05rem; }
+.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.ghost:hover { border-color: var(--accent-2); }
+
+/* Keep the project surfaces visually consistent without changing legacy UI. */
+.projects-shell button,
+.project-shell button,
+.project-shell select,
+.projects-shell .input,
+.project-shell input[type="file"] {
+  min-height: 38px;
+  font-family: inherit;
+}
+.projects-shell button,
+.project-shell button {
+  line-height: 1.2;
+}
+.projects-shell button.small,
+.project-shell button.small {
+  min-height: 32px;
+}
+.projects-shell select,
+.project-shell select,
+.project-shell input[type="file"] {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  padding: 8px 10px;
+}
+.project-shell select {
+  height: 38px;
+  font-size: 0.95rem;
+}
+.project-shell .projects-create > select {
+  flex: 0 1 160px;
+  min-width: min(100%, 150px);
+}
+.project-shell input[type="file"] {
+  max-width: 100%;
+}
+.projects-shell .ghost,
+.project-shell .ghost {
+  background: var(--panel-2);
+}
+.projects-shell .ghost:hover,
+.project-shell .ghost:hover {
+  background: var(--panel);
+  border-color: var(--accent-2);
+}
+.projects-shell .primary.ghost,
+.project-shell .primary.ghost {
+  background: transparent;
+  border-color: var(--accent-2);
+  color: var(--accent);
+  margin-top: 0;
+}
+.projects-shell .ghost.danger,
+.project-shell .ghost.danger {
+  background: rgba(224,108,108,0.08);
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.projects-shell .ghost.danger:hover,
+.project-shell .ghost.danger:hover {
+  background: rgba(224,108,108,0.16);
+  border-color: var(--bad);
 }

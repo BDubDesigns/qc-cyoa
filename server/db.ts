@@ -89,6 +89,58 @@ function migrate(database: DatabaseSync): void {
     CREATE INDEX IF NOT EXISTS idx_games_author ON games(author_id);
     CREATE INDEX IF NOT EXISTS idx_games_published ON games(is_published);
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
+
+    CREATE TABLE IF NOT EXISTS projects (
+      id          TEXT PRIMARY KEY,
+      owner_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title       TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      created_at  INTEGER NOT NULL,
+      updated_at  INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id);
+
+    CREATE TABLE IF NOT EXISTS assets (
+      id          TEXT PRIMARY KEY,
+      project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      name        TEXT NOT NULL,
+      category    TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      created_at  INTEGER NOT NULL,
+      updated_at  INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_assets_project ON assets(project_id);
+
+    CREATE TABLE IF NOT EXISTS asset_appearances (
+      id                TEXT PRIMARY KEY,
+      asset_id          TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+      name              TEXT NOT NULL,
+      description       TEXT NOT NULL DEFAULT '',
+      sort_order        INTEGER NOT NULL DEFAULT 0,
+      active_variant_id TEXT,
+      created_at        INTEGER NOT NULL,
+      updated_at        INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_appearances_asset ON asset_appearances(asset_id);
+
+    CREATE TABLE IF NOT EXISTS asset_variants (
+      id                  TEXT PRIMARY KEY,
+      appearance_id       TEXT NOT NULL REFERENCES asset_appearances(id) ON DELETE CASCADE,
+      source_type         TEXT NOT NULL CHECK(source_type IN ('generated','uploaded')),
+      status              TEXT NOT NULL CHECK(status IN ('pending','ready','failed')),
+      storage_path        TEXT,
+      mime_type           TEXT,
+      width               INTEGER,
+      height              INTEGER,
+      prompt              TEXT,
+      provider_id         TEXT,
+      model_id            TEXT,
+      generation_settings TEXT,
+      error_message       TEXT,
+      created_at          INTEGER NOT NULL,
+      updated_at          INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_variants_appearance ON asset_variants(appearance_id);
   `);
 }
 
@@ -118,3 +170,52 @@ export interface GameRow {
   created_at: number;
   updated_at: number;
 }
+
+export interface ProjectRow {
+  id: string;
+  owner_id: string;
+  title: string;
+  description: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface AssetRow {
+  id: string;
+  project_id: string;
+  name: string;
+  category: string;
+  description: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface AssetAppearanceRow {
+  id: string;
+  asset_id: string;
+  name: string;
+  description: string;
+  sort_order: number;
+  active_variant_id: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface AssetVariantRow {
+  id: string;
+  appearance_id: string;
+  source_type: string;
+  status: string;
+  storage_path: string | null;
+  mime_type: string | null;
+  width: number | null;
+  height: number | null;
+  prompt: string | null;
+  provider_id: string | null;
+  model_id: string | null;
+  generation_settings: string | null;
+  error_message: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
