@@ -4,6 +4,13 @@ Guidance for coding and planning agents working in this repository. This file st
 purposefully short — it is the **instruction pointer surface**, not the documentation
 itself.
 
+## Before starting issue or prompt work
+
+Check the working tree first and preserve any existing local work. For new work,
+fetch the latest `origin/main` and create the dedicated branch from that updated
+remote base before making changes. If the local tree or remote base is not clean or
+unambiguous, stop and resolve that before editing.
+
 ## Before you change engine or Studio architecture
 
 **Read `docs/product/engine-boundaries.md` first.** It is the canonical product

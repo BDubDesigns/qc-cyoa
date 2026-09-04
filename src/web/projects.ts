@@ -5,9 +5,9 @@
  * -> AssetVariant (generated/uploaded attempt, one is active).
  *
  * This module mounts at `#/projects` (list) and `#/project?project=<id>`
- * (detail with asset browser). Assets are grouped lazily per appearance so
- * the list stays usable as it grows. All API calls are same-origin with
- * the httpOnly session cookie.
+ * (detail with asset browser). Asset contents load lazily when a card is
+ * expanded so the list stays usable as it grows. All API calls are same-origin
+ * with the httpOnly session cookie.
  */
 
 import { api, ApiError, type Project, type Asset, type Appearance, type Variant } from "./api";
@@ -291,10 +291,10 @@ export async function mountProjectDetail(root: HTMLElement, projectId: string): 
     }
     addAssetBtn.disabled = true;
     try {
-      await api.createAsset(project.id, name, assetCat.value, assetDesc.value.trim());
+      const { asset } = await api.createAsset(project.id, name, assetCat.value, assetDesc.value.trim());
       assetName.value = "";
       assetDesc.value = "";
-      await loadAssets();
+      await loadAssets(asset.id);
     } catch (err) {
       notice(createSec, message(err), "error");
     } finally {
@@ -302,7 +302,7 @@ export async function mountProjectDetail(root: HTMLElement, projectId: string): 
     }
   });
 
-  async function loadAssets(): Promise<void> {
+  async function loadAssets(expandedAssetId?: string): Promise<void> {
     assetList.replaceChildren();
     const loading = document.createElement("p");
     loading.className = "muted";
@@ -319,7 +319,7 @@ export async function mountProjectDetail(root: HTMLElement, projectId: string): 
         return;
       }
       for (const asset of assets) {
-        const card = await buildAssetCard(project.id, asset);
+        const card = await buildAssetCard(project.id, asset, asset.id === expandedAssetId);
         assetList.appendChild(card);
       }
     } catch (err) {
@@ -331,19 +331,35 @@ export async function mountProjectDetail(root: HTMLElement, projectId: string): 
   await loadAssets();
 }
 
-async function buildAssetCard(projectId: string, asset: Asset): Promise<HTMLElement> {
+async function buildAssetCard(projectId: string, asset: Asset, initiallyExpanded = false): Promise<HTMLElement> {
   const card = document.createElement("div");
   card.className = "asset-card";
 
   const head = document.createElement("div");
   head.className = "asset-head";
+  const body = document.createElement("div");
+  body.className = "asset-body";
+  body.id = `asset-body-${asset.id}`;
+  body.hidden = !initiallyExpanded;
+
+  const toggleBtn = document.createElement("button");
+  toggleBtn.type = "button";
+  toggleBtn.className = "asset-toggle";
+  toggleBtn.setAttribute("aria-controls", body.id);
+  const toggleIcon = document.createElement("span");
+  toggleIcon.className = "asset-toggle-icon";
+  toggleIcon.setAttribute("aria-hidden", "true");
+  const toggleLabel = document.createElement("span");
+  toggleLabel.className = "asset-toggle-label";
+  toggleBtn.append(toggleIcon, toggleLabel);
+
   const name = document.createElement("strong");
   name.textContent = asset.name;
   const cat = document.createElement("span");
   cat.className = "asset-cat";
-  cat.textContent = `(${asset.category})`;
+  cat.textContent = asset.category;
   const delBtn = document.createElement("button");
-  delBtn.className = "ghost danger";
+  delBtn.className = "ghost danger asset-delete";
   delBtn.textContent = "Delete asset";
   delBtn.addEventListener("click", async () => {
     if (!confirm(`Delete asset "${asset.name}" and all its appearances/variants?`)) return;
@@ -354,7 +370,7 @@ async function buildAssetCard(projectId: string, asset: Asset): Promise<HTMLElem
       notice(card, message(err), "error");
     }
   });
-  head.append(name, cat, delBtn);
+  head.append(toggleBtn, name, cat, delBtn);
   if (asset.description) {
     const desc = document.createElement("p");
     desc.className = "muted asset-desc";
@@ -366,7 +382,7 @@ async function buildAssetCard(projectId: string, asset: Asset): Promise<HTMLElem
   // Appearances for this asset
   const appearancesWrap = document.createElement("div");
   appearancesWrap.className = "appearances";
-  card.appendChild(appearancesWrap);
+  body.appendChild(appearancesWrap);
 
   const appearanceForm = document.createElement("div");
   appearanceForm.className = "appearance-form";
@@ -380,7 +396,26 @@ async function buildAssetCard(projectId: string, asset: Asset): Promise<HTMLElem
   addAppBtn.className = "primary ghost";
   addAppBtn.textContent = "+ Add appearance";
   appearanceForm.append(appName, appDesc, addAppBtn);
-  card.appendChild(appearanceForm);
+  body.appendChild(appearanceForm);
+
+  card.appendChild(body);
+
+  let appearancesLoaded = false;
+  let appearancesLoading: Promise<void> | null = null;
+
+  function setExpanded(expanded: boolean): void {
+    body.hidden = !expanded;
+    toggleBtn.setAttribute("aria-expanded", String(expanded));
+    toggleBtn.setAttribute("aria-label", `${expanded ? "Collapse" : "Expand"} ${asset.name}`);
+    toggleIcon.textContent = expanded ? "▾" : "▸";
+    toggleLabel.textContent = expanded ? "Collapse" : "Expand";
+  }
+
+  toggleBtn.addEventListener("click", () => {
+    const expanded = body.hidden;
+    setExpanded(expanded);
+    if (expanded) void loadAppearances();
+  });
 
   addAppBtn.addEventListener("click", async () => {
     const n = appName.value.trim();
@@ -393,7 +428,7 @@ async function buildAssetCard(projectId: string, asset: Asset): Promise<HTMLElem
       await api.createAppearance(projectId, asset.id, n, appDesc.value.trim());
       appName.value = "";
       appDesc.value = "";
-      await loadAppearances();
+      await loadAppearances(true);
     } catch (err) {
       notice(card, message(err), "error");
     } finally {
@@ -401,33 +436,47 @@ async function buildAssetCard(projectId: string, asset: Asset): Promise<HTMLElem
     }
   });
 
-  async function loadAppearances(): Promise<void> {
+  async function loadAppearances(force = false): Promise<void> {
+    if (appearancesLoading) return appearancesLoading;
+    if (appearancesLoaded && !force) return;
+
     appearancesWrap.replaceChildren();
     const loading = document.createElement("p");
     loading.className = "muted";
     loading.textContent = "Loading appearances…";
     appearancesWrap.appendChild(loading);
+    appearancesLoading = (async () => {
+      try {
+        const { appearances } = await api.listAppearances(projectId, asset.id);
+        appearancesWrap.replaceChildren();
+        if (appearances.length === 0) {
+          const empty = document.createElement("p");
+          empty.className = "muted";
+          empty.textContent = "No appearances yet. Add one to generate or upload variants.";
+          appearancesWrap.appendChild(empty);
+          appearancesLoaded = true;
+          return;
+        }
+        for (const appearance of appearances) {
+          const node = await buildAppearanceNode(projectId, asset.id, appearance);
+          appearancesWrap.appendChild(node);
+        }
+        appearancesLoaded = true;
+      } catch (err) {
+        appearancesWrap.replaceChildren();
+        notice(appearancesWrap, message(err), "error");
+      }
+    })();
+
     try {
-      const { appearances } = await api.listAppearances(projectId, asset.id);
-      appearancesWrap.replaceChildren();
-      if (appearances.length === 0) {
-        const empty = document.createElement("p");
-        empty.className = "muted";
-        empty.textContent = "No appearances yet. Add one to generate or upload variants.";
-        appearancesWrap.appendChild(empty);
-        return;
-      }
-      for (const appearance of appearances) {
-        const node = await buildAppearanceNode(projectId, asset.id, appearance);
-        appearancesWrap.appendChild(node);
-      }
-    } catch (err) {
-      appearancesWrap.replaceChildren();
-      notice(appearancesWrap, message(err), "error");
+      await appearancesLoading;
+    } finally {
+      appearancesLoading = null;
     }
   }
 
-  await loadAppearances();
+  setExpanded(initiallyExpanded);
+  if (initiallyExpanded) await loadAppearances();
   return card;
 }
 
