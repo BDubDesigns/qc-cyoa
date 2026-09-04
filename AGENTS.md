@@ -7,7 +7,7 @@ itself.
 ## Before starting issue or prompt work
 
 Check the working tree first and preserve any existing local work. For new work,
-fetch the latest `origin/main` and create the dedicated branch from that updated
+fetch the latest `origin/master` and create the dedicated branch from that updated
 remote base before making changes. If the local tree or remote base is not clean or
 unambiguous, stop and resolve that before editing.
 
