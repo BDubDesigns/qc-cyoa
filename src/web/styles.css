@@ -1003,6 +1003,12 @@ button.aimable.active-aim {
 .project-edit { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
 .project-edit .input { flex: 1 1 220px; min-width: min(100%, 180px); }
 
+.asset-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin: 0 0 14px; }
+.asset-filter-field { display: flex; flex: 1 1 220px; flex-direction: column; gap: 4px; min-width: min(100%, 180px); color: var(--muted); font-size: 0.78rem; }
+.asset-filter-field:last-child { flex: 0 1 180px; }
+.asset-filter-field .input,
+.asset-filter-field select { width: 100%; }
+
 .asset-list { display: flex; flex-direction: column; gap: 16px; }
 .asset-card { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .asset-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 56px; padding: 10px 14px; }

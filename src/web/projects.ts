@@ -14,6 +14,13 @@ import { api, ApiError, type Project, type Asset, type Appearance, type Variant 
 import { navBar, clearAndMount, panel, notice } from "./ui";
 import { navigate } from "./router";
 
+export function assetMatchesFilters(asset: Pick<Asset, "name" | "category">, searchText: string, category: string): boolean {
+  const query = searchText.trim().toLowerCase();
+  const nameMatches = query.length === 0 || asset.name.toLowerCase().includes(query);
+  const categoryMatches = category === "all" || category.length === 0 || asset.category === category;
+  return nameMatches && categoryMatches;
+}
+
 // ---------------------------------------------------------------------------
 // Projects list — #/projects
 // ---------------------------------------------------------------------------
@@ -278,10 +285,59 @@ export async function mountProjectDetail(root: HTMLElement, projectId: string): 
   listTitle.className = "section-title";
   listTitle.textContent = "Assets";
   assetListSec.appendChild(listTitle);
+
+  const filterBar = document.createElement("div");
+  filterBar.className = "asset-filter-bar";
+  const searchField = document.createElement("label");
+  searchField.className = "asset-filter-field";
+  const searchLabel = document.createElement("span");
+  searchLabel.textContent = "Search";
+  const searchInput = document.createElement("input");
+  searchInput.type = "search";
+  searchInput.className = "input asset-search";
+  searchInput.placeholder = "Search assets…";
+  searchField.append(searchLabel, searchInput);
+
+  const categoryField = document.createElement("label");
+  categoryField.className = "asset-filter-field";
+  const categoryLabel = document.createElement("span");
+  categoryLabel.textContent = "Category";
+  const categoryFilter = document.createElement("select");
+  categoryFilter.className = "asset-category-filter";
+  const categories = ["all", "background", "character", "object", "effect", "overlay", "other"];
+  for (const category of categories) {
+    const option = document.createElement("option");
+    option.value = category;
+    option.textContent = category === "all" ? "All" : category;
+    categoryFilter.appendChild(option);
+  }
+  categoryField.append(categoryLabel, categoryFilter);
+  filterBar.append(searchField, categoryField);
+  assetListSec.appendChild(filterBar);
+
   const assetList = document.createElement("div");
   assetList.className = "asset-list";
   assetListSec.appendChild(assetList);
+  const noMatches = document.createElement("p");
+  noMatches.className = "muted asset-filter-empty";
+  noMatches.textContent = "No assets match these filters. Try a different name or category.";
+  noMatches.hidden = true;
   container.appendChild(assetListSec);
+
+  let assetCards: Array<{ asset: Asset; card: HTMLElement }> = [];
+
+  function applyAssetFilters(): void {
+    let visibleCount = 0;
+    for (const entry of assetCards) {
+      const visible = entry.card.isConnected && assetMatchesFilters(entry.asset, searchInput.value, categoryFilter.value);
+      entry.card.hidden = !visible;
+      if (visible) visibleCount += 1;
+    }
+    noMatches.hidden = assetCards.length === 0 || visibleCount > 0;
+  }
+
+  searchInput.addEventListener("input", applyAssetFilters);
+  categoryFilter.addEventListener("change", applyAssetFilters);
 
   addAssetBtn.addEventListener("click", async () => {
     const name = assetName.value.trim();
@@ -303,6 +359,7 @@ export async function mountProjectDetail(root: HTMLElement, projectId: string): 
   });
 
   async function loadAssets(expandedAssetId?: string): Promise<void> {
+    assetCards = [];
     assetList.replaceChildren();
     const loading = document.createElement("p");
     loading.className = "muted";
@@ -315,13 +372,17 @@ export async function mountProjectDetail(root: HTMLElement, projectId: string): 
         const empty = document.createElement("p");
         empty.className = "muted";
         empty.textContent = "No assets yet. Add one above — e.g. Sasquatch as character, then add appearances like “Hiding Badly”.";
-        assetList.appendChild(empty);
+        assetList.append(empty, noMatches);
         return;
       }
       for (const asset of assets) {
-        const card = await buildAssetCard(project.id, asset, asset.id === expandedAssetId);
+        const initiallyExpanded = asset.id === expandedAssetId && assetMatchesFilters(asset, searchInput.value, categoryFilter.value);
+        const card = await buildAssetCard(project.id, asset, initiallyExpanded);
+        assetCards.push({ asset, card });
         assetList.appendChild(card);
       }
+      assetList.appendChild(noMatches);
+      applyAssetFilters();
     } catch (err) {
       assetList.replaceChildren();
       notice(assetList, message(err), "error");
