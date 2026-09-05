@@ -2,170 +2,67 @@
  * Slice 0 integration tests: creator auth + projects + assets +
  * appearances + variants + provider boundary (mock only — no paid calls).
  *
- * Same pattern as server.test.ts: isolated temp DB + throwaway http server
- * that wires the real handlers via helper `buildServer()`.
+ * The tests use the same production router as the development server.
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import { describe, it, expect, afterAll, beforeEach } from "vitest";
 import * as http from "node:http";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { openDb, closeDb } from "../server/db";
-import { PasswordAuthService, AuthError } from "../server/auth-service";
-import { authRoutes } from "../server/routes/auth";
-import { gameRoutes, requireUser } from "../server/routes/games";
-import { projectRoutes } from "../server/routes/projects";
-import { assetHandlers, appearanceHandlers, variantHandlers } from "../server/routes/assets";
-import { readJsonBody, writeError, writeJson, HttpError } from "../server/routes/json";
+import { BetterAuthService, createAuth, migrateAuthSchema } from "../server/auth-service";
+import { createApp } from "../server/app";
 import { MockImageProvider, SingularityProvider, isMissingIntegration } from "../server/image-provider";
 import { MAX_UPLOAD_JSON_BYTES } from "../server/storage";
 
-let server: http.Server;
-let baseUrl: string;
+let server: http.Server | undefined;
+let baseUrl = "";
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cyoa-slice0-"));
+const TEST_SECRET = "test-secret-for-better-auth-012345678901234567890123456789";
+const TEST_ALLOWED_HOSTS = ["localhost:*", "127.0.0.1:*"];
 
-function buildServer(): http.Server {
-  return http.createServer(async (req, res) => {
-    try {
-      const url = new URL(req.url ?? "/", "http://localhost");
-      const segs = url.pathname.split("/").filter(Boolean);
-      const auth = new PasswordAuthService();
-      const Auth = authRoutes(auth);
-      const Games = gameRoutes();
-      const Projects = projectRoutes();
-
-      const asJson = (v: unknown) => (v as Record<string, unknown> | null) ?? null;
-
-      // auth
-      if (req.method === "POST" && segs[0] === "api" && segs[1] === "auth") {
-        const a = segs[2];
-        const body = asJson(await readJsonBody(req));
-        if (a === "signup") return await Auth.signup(req, res, body);
-        if (a === "login") return await Auth.login(req, res, body);
-        if (a === "logout") return Auth.logout(req, res);
-      }
-      if (req.method === "GET" && segs[0] === "api" && segs[1] === "auth" && segs[2] === "session") {
-        return await Auth.session(req, res);
-      }
-      if (segs[0] === "api" && segs[1] === "me" && segs[2] === "games") {
-        const user = await requireUser(auth, req);
-        return Games.mine(req, res, user);
-      }
-      // projects + nested assets/appearances/variants
-      if (segs[0] === "api" && segs[1] === "projects") {
-        if (segs.length === 2) {
-          if (req.method === "GET") return Projects.list(req, res, await requireUser(auth, req));
-          if (req.method === "POST") return Projects.create(req, res, await requireUser(auth, req), asJson(await readJsonBody(req)));
-          throw new HttpError(405, "method not allowed");
-        }
-        const projectId = segs[2]!;
-        if (segs[3] === "assets") {
-          const assetId = segs[4];
-          if (!assetId) {
-            if (req.method === "GET") return assetHandlers.list(req, res, await requireUser(auth, req), projectId);
-            if (req.method === "POST") return assetHandlers.create(req, res, await requireUser(auth, req), projectId, asJson(await readJsonBody(req)));
-            throw new HttpError(405, "method not allowed");
-          }
-          if (segs[5] === "appearances") {
-            const appearanceId = segs[6];
-            if (!appearanceId) {
-              if (req.method === "GET") return appearanceHandlers.list(req, res, await requireUser(auth, req), projectId, assetId);
-              if (req.method === "POST") return appearanceHandlers.create(req, res, await requireUser(auth, req), projectId, assetId, asJson(await readJsonBody(req)));
-              throw new HttpError(405, "method not allowed");
-            }
-            if (segs[7] === "active" && req.method === "PUT") {
-              return appearanceHandlers.setActive(req, res, await requireUser(auth, req), projectId, assetId, appearanceId, asJson(await readJsonBody(req)));
-            }
-            if (segs[7] === "variants") {
-              const variantId = segs[8];
-              if (!variantId) {
-                if (req.method === "GET") return variantHandlers.list(req, res, await requireUser(auth, req), projectId, assetId, appearanceId);
-                throw new HttpError(405, "method not allowed");
-              }
-              if (req.method === "GET") return variantHandlers.get(req, res, await requireUser(auth, req), projectId, assetId, appearanceId, variantId);
-              if (req.method === "DELETE") return variantHandlers.remove(req, res, await requireUser(auth, req), projectId, assetId, appearanceId, variantId);
-              throw new HttpError(405, "method not allowed");
-            }
-            if (segs[7] === "upload" && req.method === "POST") {
-              return await variantHandlers.upload(req, res, await requireUser(auth, req), projectId, assetId, appearanceId, asJson(await readJsonBody(req, MAX_UPLOAD_JSON_BYTES)));
-            }
-            if (segs[7] === "generate" && req.method === "POST") {
-              return await variantHandlers.generate(req, res, await requireUser(auth, req), projectId, assetId, appearanceId, asJson(await readJsonBody(req)));
-            }
-            if (req.method === "PUT") return appearanceHandlers.update(req, res, await requireUser(auth, req), projectId, assetId, appearanceId, asJson(await readJsonBody(req)));
-            if (req.method === "DELETE") return appearanceHandlers.remove(req, res, await requireUser(auth, req), projectId, assetId, appearanceId);
-            throw new HttpError(404, "not found");
-          }
-          if (req.method === "GET") return assetHandlers.get(req, res, await requireUser(auth, req), projectId, assetId);
-          if (req.method === "PUT") return assetHandlers.update(req, res, await requireUser(auth, req), projectId, assetId, asJson(await readJsonBody(req)));
-          if (req.method === "DELETE") return assetHandlers.remove(req, res, await requireUser(auth, req), projectId, assetId);
-          throw new HttpError(405, "method not allowed");
-        }
-        if (req.method === "GET") return Projects.get(req, res, await requireUser(auth, req), projectId);
-        if (req.method === "PUT") return Projects.update(req, res, await requireUser(auth, req), projectId, asJson(await readJsonBody(req)));
-        if (req.method === "DELETE") return Projects.remove(req, res, await requireUser(auth, req), projectId);
-        throw new HttpError(405, "method not allowed");
-      }
-      // variants file
-      if (segs[0] === "api" && segs[1] === "variants" && segs[3] === "file" && req.method === "GET") {
-        const variantId = segs[2]!;
-        return variantHandlers.file(req, res, await auth.currentUser(req), variantId);
-      }
-      // games
-      if (segs[0] === "api" && segs[1] === "games") {
-        const id = segs[2];
-        if (id === undefined) {
-          if (req.method === "GET") return Games.list(req, res);
-          if (req.method === "POST") return await Games.create(req, res, await requireUser(auth, req), asJson(await readJsonBody(req)));
-          throw new HttpError(404, "not found");
-        }
-        if (req.method === "GET") return Games.get(req, res, await auth.currentUser(req), id);
-        if (req.method === "POST" && segs[3] === "publish") return Games.publish(req, res, await requireUser(auth, req), id);
-        if (req.method === "PUT") return await Games.update(req, res, await requireUser(auth, req), id, asJson(await readJsonBody(req)));
-        if (req.method === "DELETE") return Games.remove(req, res, await requireUser(auth, req), id);
-      }
-      throw new HttpError(404, "not found");
-    } catch (err) {
-      if (err instanceof HttpError) return writeError(res, err.status, err.message);
-      if (err instanceof AuthError) return writeError(res, err.status, err.message);
-      console.error(err);
-      return writeError(res, 500, "internal error");
-    }
-  });
+async function stopServer(): Promise<void> {
+  if (!server) return;
+  await new Promise<void>((resolve, reject) => server!.close((err) => (err ? reject(err) : resolve())));
+  server = undefined;
 }
 
-beforeAll(() => {
-  // Force mock provider for all tests — no real network, no paid calls.
-  process.env.IMAGE_PROVIDER = "mock";
-  delete process.env.SINGULARITY_API_URL;
-  delete process.env.SINGULARITY_API_KEY;
-  server = buildServer();
-  return new Promise<void>((resolve) => {
-    server.listen(0, "127.0.0.1", () => {
-      const addr = server.address() as { port: number };
+async function startServer(): Promise<void> {
+  const auth = createAuth({ allowedHosts: TEST_ALLOWED_HOSTS, secret: TEST_SECRET });
+  await migrateAuthSchema(auth);
+  server = createApp(new BetterAuthService(auth));
+  await new Promise<void>((resolve) => {
+    server!.listen(0, "127.0.0.1", () => {
+      const addr = server!.address() as { port: number };
       baseUrl = `http://127.0.0.1:${addr.port}`;
       resolve();
     });
   });
+}
+
+beforeEach(async () => {
+  // Force mock provider for all tests — no real network, no paid calls.
+  process.env.IMAGE_PROVIDER = "mock";
+  delete process.env.SINGULARITY_API_URL;
+  delete process.env.SINGULARITY_API_KEY;
+  await stopServer();
+  closeDb();
+  openDb({ file: path.join(tmpDir, `db-${Date.now()}-${Math.random()}.sqlite`) });
+  await startServer();
+  // Ensure asset dir is isolated per run
+  const assetDir = path.join(tmpDir, `assets-${Date.now()}-${Math.random()}`);
+  fs.mkdirSync(assetDir, { recursive: true });
+  process.env.ASSET_DIR = assetDir;
 });
 
-afterAll(() => {
-  server.close();
+afterAll(async () => {
+  await stopServer();
   closeDb();
   // Clean up any temp asset files created during tests.
   try {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   } catch { /* ignore */ }
-});
-
-beforeEach(() => {
-  closeDb();
-  openDb({ file: path.join(tmpDir, `db-${Date.now()}-${Math.random()}.sqlite`) });
-  // Ensure asset dir is isolated per run
-  const assetDir = path.join(tmpDir, `assets-${Date.now()}-${Math.random()}`);
-  fs.mkdirSync(assetDir, { recursive: true });
-  process.env.ASSET_DIR = assetDir;
 });
 
 function cookieFrom(res: Response): string | null {
@@ -174,13 +71,15 @@ function cookieFrom(res: Response): string | null {
   return raw.split(";")[0]!;
 }
 
-async function signup(username: string, password: string): Promise<string> {
-  const res = await fetch(`${baseUrl}/api/auth/signup`, {
+async function signup(localPart: string, password: string, name = localPart): Promise<string> {
+  const res = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ email: `${localPart}@example.com`, password, name }),
   });
-  expect(res.status).toBe(201);
+  expect(res.status).toBe(200);
+  const data = (await res.json()) as { token?: unknown };
+  expect(data.token).toBeUndefined();
   return cookieFrom(res)!;
 }
 

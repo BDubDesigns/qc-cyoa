@@ -1,7 +1,7 @@
 /**
- * Account screen: minimal username/password signup + login (temporary auth).
+ * Account screen: email/password creator signup + login via Better Auth.
  * Also lists the current user's games once authenticated. This is the only
- * surface that will need to change when better-auth replaces the seam.
+ * surface that needs to know the creator-facing auth fields.
  */
 import { api, ApiError, type User, type GameSummary } from "./api";
 import { navBar, clearAndMount, panel, notice } from "./ui";
@@ -35,7 +35,8 @@ function authPanel(): HTMLElement {
   const form = document.createElement("form");
   form.className = "auth-form";
 
-  const username = textInput("username", "Username");
+  const name = textInput("name", "Name");
+  const email = textInput("email", "Email");
   const password = textInput("password", "Password (min 8 chars)");
   password.input.type = "password";
 
@@ -45,7 +46,7 @@ function authPanel(): HTMLElement {
   const row = document.createElement("div");
   row.className = "form-row";
   const loginBtn = document.createElement("button");
-  loginBtn.type = "submit";
+  loginBtn.type = "button";
   loginBtn.className = "primary";
   loginBtn.textContent = "Log in";
   const signupBtn = document.createElement("button");
@@ -54,12 +55,12 @@ function authPanel(): HTMLElement {
   signupBtn.textContent = "Sign up";
   row.append(loginBtn, signupBtn);
 
-  form.append(username.label, password.label, row, status);
+  form.append(name.label, email.label, password.label, row, status);
 
   loginBtn.addEventListener("click", async () => {
     status.replaceChildren();
     try {
-      await api.login(username.input.value, password.input.value);
+      await api.login(email.input.value, password.input.value);
       location.reload();
     } catch (err) {
       showStatus(status, err);
@@ -69,7 +70,7 @@ function authPanel(): HTMLElement {
   signupBtn.addEventListener("click", async () => {
     status.replaceChildren();
     try {
-      await api.signup(username.input.value, password.input.value);
+      await api.signup(email.input.value, password.input.value, name.input.value);
       location.reload();
     } catch (err) {
       showStatus(status, err);
@@ -81,10 +82,10 @@ function authPanel(): HTMLElement {
 }
 
 function accountPanel(user: User): HTMLElement {
-  const sec = panel(`Signed in as ${user.username}`, document.createElement("div"));
+  const sec = panel(`Signed in as ${user.name}`, document.createElement("div"));
   const who = document.createElement("p");
   who.className = "muted";
-  who.textContent = `User id: ${user.id}`;
+  who.textContent = `${user.email} · User id: ${user.id}`;
   sec.appendChild(who);
 
   const myTitle = document.createElement("h3");
@@ -151,7 +152,7 @@ function textInput(name: string, placeholder: string): { label: HTMLLabelElement
   span.textContent = placeholder;
   const input = document.createElement("input");
   input.name = name;
-  input.autocomplete = name === "password" ? "current-password" : "username";
+  input.autocomplete = name === "password" ? "current-password" : name === "email" ? "email" : "name";
   label.append(span, input);
   return { label, input };
 }

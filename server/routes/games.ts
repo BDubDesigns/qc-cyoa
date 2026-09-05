@@ -24,7 +24,8 @@ export interface GameHandlers {
 
 export interface UserLike {
   id: string;
-  username: string;
+  email: string;
+  name: string;
 }
 
 export function gameRoutes(): GameHandlers {

@@ -1,6 +1,6 @@
 /**
  * FE API client — the ONLY place the browser talks to the /api backend.
- * A future better-auth swap touches here (and server/auth-service) only.
+ * Better Auth remains behind this small application API adapter.
  *
  * All requests include credentials so the httpOnly session cookie is sent.
  */
@@ -8,7 +8,8 @@ import type { GameDefinition } from "../core/types";
 
 export interface User {
   id: string;
-  username: string;
+  email: string;
+  name: string;
 }
 
 export interface GameSummary {
@@ -109,8 +110,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
   if (!res.ok) {
     const message =
-      data && typeof data === "object" && "error" in data
+        data && typeof data === "object" && "error" in data
         ? String((data as { error: unknown }).error)
+        : data && typeof data === "object" && "message" in data
+          ? String((data as { message: unknown }).message)
         : res.statusText;
     throw new ApiError(res.status, message);
   }
@@ -119,12 +122,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export const api = {
   // auth
-  signup: (username: string, password: string) =>
-    request<{ user: User }>("POST", "/auth/signup", { username, password }),
-  login: (username: string, password: string) =>
-    request<{ user: User }>("POST", "/auth/login", { username, password }),
-  logout: () => request<{ ok: boolean }>("POST", "/auth/logout"),
-  session: () => request<{ user: User }>("GET", "/auth/session"),
+  signup: (email: string, password: string, name: string) =>
+    request<{ user: User }>("POST", "/auth/sign-up/email", { email, password, name }),
+  login: (email: string, password: string) =>
+    request<{ user: User }>("POST", "/auth/sign-in/email", { email, password }),
+  logout: () => request<{ ok: boolean }>("POST", "/auth/sign-out"),
+  session: () => request<{ user: User }>("GET", "/auth/get-session"),
 
   // games
   listPublished: () => request<{ games: GameSummary[] }>("GET", "/games?published=1"),

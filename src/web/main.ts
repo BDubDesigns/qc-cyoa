@@ -7,7 +7,7 @@ import "./styles.css";
 import type { GameDefinition } from "../core/types";
 import { onRouteChange, type Route } from "./router";
 import { loadGameById } from "./registry";
-import { api, ApiError } from "./api";
+import { api, ApiError, isUnauthenticated } from "./api";
 import { mountPlay, unmountPlay } from "./play";
 import { mountStudio } from "../studio/studio";
 import { mountBrowse } from "./browse";
@@ -42,12 +42,54 @@ async function dispatch(route: Route): Promise<void> {
       await mountAccount(root);
       return;
     case "projects":
-      await mountProjects(root);
+      await mountProtectedAuthoring(() => mountProjects(root));
       return;
     case "project":
-      await mountProjectDetail(root, route.projectId);
+      await mountProtectedAuthoring(() => mountProjectDetail(root, route.projectId));
       return;
   }
+}
+
+async function mountProtectedAuthoring(mount: () => Promise<void>): Promise<void> {
+  try {
+    await api.session();
+  } catch (err) {
+    if (isUnauthenticated(err)) {
+      renderAuthRequired();
+      return;
+    }
+    renderAuthoringUnavailable(err);
+    return;
+  }
+  await mount();
+}
+
+function renderAuthRequired(): void {
+  const sec = document.createElement("section");
+  sec.className = "app-panel panel";
+  const h = document.createElement("h2");
+  h.textContent = "Sign in to open the creator studio";
+  const p = document.createElement("p");
+  p.className = "muted";
+  p.textContent = "Projects and their asset libraries are private creator workspaces.";
+  const a = document.createElement("a");
+  a.className = "primary";
+  a.href = "#/account";
+  a.textContent = "Go to Account →";
+  sec.append(h, p, a);
+  root.replaceChildren(navBar("account"), sec);
+}
+
+function renderAuthoringUnavailable(err: unknown): void {
+  const sec = document.createElement("section");
+  sec.className = "app-panel panel";
+  const h = document.createElement("h2");
+  h.textContent = "Creator studio unavailable";
+  const p = document.createElement("p");
+  p.className = "notice-line error";
+  p.textContent = err instanceof Error ? err.message : "Could not verify your creator session.";
+  sec.append(h, p);
+  root.replaceChildren(navBar("projects"), sec);
 }
 
 async function mountPlayScreen(gameId?: string): Promise<void> {

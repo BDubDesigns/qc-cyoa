@@ -67,6 +67,13 @@ engine or Studio changes):
 ```bash
 pnpm install
 
+# Terminal 0 — configure Better Auth (use a new secret per install)
+export BETTER_AUTH_SECRET="$(openssl rand -base64 32)"
+export BETTER_AUTH_ALLOWED_HOSTS="localhost:*,127.0.0.1:*"
+# Optional exact additional browser origins; allowed hosts are trusted already.
+# Never use `*` here:
+# export BETTER_AUTH_TRUSTED_ORIGINS="https://studio.example.com"
+
 # Terminal 1 — the API + SQLite backend (stores authored stories, accounts)
 pnpm run dev:api        # http://127.0.0.1:8787  (nodemon-free; rerun to restart)
 
@@ -92,11 +99,40 @@ Asset categories are visual types, not gameplay roles: `background`, `character`
 from inventory, stationary, evidence, or a puzzle target is decided by the future
 runtime/editor — not by its category.
 
-- Publishing/cloud storage needs a (temporary, test-only) account; later it will
-  move to better-auth.
-- Auth today is minimal username/password (scrypt-hashed) behind a swappable
-  `AuthService`; CSRF and rate-limiting are intentionally deferred to the
-  better-auth swap.
+- Publishing/cloud storage requires a creator account. Better Auth provides
+  email/password signup, sign-in, sign-out, and durable same-origin cookie
+  sessions for the current authoring routes.
+- Issue 10 intentionally keeps the auth surface small: no email verification,
+  password reset, social providers, organizations, 2FA, or passkeys.
+
+The database is disposable during this pre-alpha. If an older Slice 0 database
+contains the retired `users` or `sessions` tables, stop the API and delete the
+configured `DB_FILE` plus its `-wal` and `-shm` sidecar files before restarting;
+the server does not migrate the temporary auth schema.
+
+For a production or Coolify PR-preview environment, set an explicit allowlist
+instead of the local values. The same shape supports one production hostname
+and the `{{pr_id}}` preview hosts without hard-coding a domain in the app:
+
+```bash
+BETTER_AUTH_SECRET="<unique environment secret>"
+BETTER_AUTH_ALLOWED_HOSTS="qc-cyoa.example.com,*.preview.qc-cyoa.example.com"
+BETTER_AUTH_TRUSTED_PROXY_HEADERS=1
+BETTER_AUTH_USE_SECURE_COOKIES=1
+```
+
+`BETTER_AUTH_TRUSTED_PROXY_HEADERS=1` is only for a deployment where Coolify's
+reverse proxy overwrites `X-Forwarded-Host` and `X-Forwarded-Proto` and the API
+is not directly reachable. Better Auth then resolves each request from the
+approved host pattern and the proxy's HTTPS protocol. Keep
+`crossSubDomainCookies` disabled (the default): cookies have no `Domain`
+attribute, so localhost, production, and every preview keep independent
+sessions. Give each preview its own `BETTER_AUTH_SECRET` and disposable
+`DB_FILE`; it must not read production secrets or data.
+
+This multi-host setup intentionally uses Better Auth's dynamic
+`baseURL.allowedHosts` configuration and fails closed for an unapproved host;
+do not replace it with a single `BETTER_AUTH_URL` fallback.
 
 ## Legacy: author, publish, and share a story
 
@@ -112,9 +148,8 @@ and share it — readers open it and play straight from the server.
 
 - The bundled demo games (`lighthouse`, `post_office`) are always available and
   play offline even if the API is down.
-- Auth today is minimal username/password (scrypt-hashed) behind a swappable
-  `AuthService`; CSRF and rate-limiting are intentionally deferred to the
-  better-auth swap.
+- The current account uses Better Auth email/password sessions; the legacy
+  Studio remains available for development and regression coverage.
 
 ## How a game is defined
 
@@ -309,10 +344,10 @@ are validated in the test suite so a regression fails CI.
 
 ```
 server/                  # Node API (bare node:http + node:sqlite)
-  index.ts               # router + listener (PORT 8787)
+  index.ts               # Better Auth setup + listener (PORT 8787)
+  app.ts                 # shared node:http router for production and tests
   db.ts                  # SQLite schema/helpers (node:sqlite)
-  auth-service.ts        # AuthService seam + credentials/session impl
-  password.ts            # scrypt hashing (temporary, pre-better-auth)
+  auth-service.ts        # Better Auth adapter + canonical creator identity
   storage.ts             # asset file storage (variant files on disk)
   image-provider.ts      # provider seam: mock + Singularity (fail-closed stub)
   routes/ auth.ts games.ts json.ts projects.ts assets.ts

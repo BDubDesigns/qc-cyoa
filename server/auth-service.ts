@@ -1,163 +1,182 @@
 /**
- * AuthService abstraction + a thin username/password implementation.
+ * Better Auth integration for the bare node:http API.
  *
- * This is THE seam the plan calls out: game/save code never touches sessions or
- * cookies directly — they go through `AuthService`. When we swap in better-auth,
- * only this file (and the cookie name here) changes.
+ * Better Auth owns creator identities, credential accounts, and durable
+ * sessions. The rest of the API only depends on this small request-oriented
+ * seam and never reads auth tables or cookies directly.
  */
-import * as crypto from "node:crypto";
 import * as http from "node:http";
-import { getDb, type UserRow } from "./db";
-import { hashPassword, normalizeUsername, validatePassword, verifyPassword } from "./password";
-
-export const SESSION_COOKIE = "cyoa_sid";
-export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+import { betterAuth, type Auth, type BetterAuthOptions } from "better-auth";
+import { fromNodeHeaders } from "better-auth/node";
+import { getMigrations } from "better-auth/db/migration";
+import { getDb } from "./db";
 
 export interface User {
   id: string;
-  username: string;
+  email: string;
+  name: string;
 }
 
+export interface SignupInput {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface SigninInput {
+  email: string;
+  password: string;
+}
+
+export type BetterAuth = Auth<BetterAuthOptions>;
+
 export interface AuthService {
-  signup(username: string, password: string): Promise<User>;
-  login(username: string, password: string): Promise<User>;
-  logout(req: http.IncomingMessage, res: http.ServerResponse): void;
-  /** Resolves the current user from the request cookie, or null. */
+  signUpEmail(req: http.IncomingMessage, body: SignupInput): Promise<Response>;
+  signInEmail(req: http.IncomingMessage, body: SigninInput): Promise<Response>;
+  signOut(req: http.IncomingMessage): Promise<Response>;
+  sessionResponse(req: http.IncomingMessage): Promise<Response>;
+  /** Resolves the current user from the Better Auth cookie, or null. */
   currentUser(req: http.IncomingMessage): Promise<User | null>;
 }
 
-/** Cookie parsing: minimal split on "; " → {name: value}. */
-function parseCookies(header: string | undefined): Record<string, string> {
-  const out: Record<string, string> = {};
-  if (!header) return out;
-  for (const part of header.split(";")) {
-    const eq = part.indexOf("=");
-    if (eq === -1) continue;
-    const name = part.slice(0, eq).trim();
-    const value = part.slice(eq + 1).trim();
-    out[name] = value;
+export interface AuthConfig {
+  /** Test callers may supply an isolated secret without mutating process env. */
+  secret?: string;
+  /** Exact hosts and Better Auth wildcard host patterns accepted by the app. */
+  allowedHosts?: string[];
+  /** How Better Auth constructs each request-specific URL. */
+  protocol?: "http" | "https" | "auto";
+  /** Only enable when every request reaches the app through a trusted proxy. */
+  trustedProxyHeaders?: boolean;
+  /** Test/deployment override for the cookie Secure attribute. */
+  useSecureCookies?: boolean;
+}
+
+const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
+const SESSION_UPDATE_AGE_SECONDS = 24 * 60 * 60;
+
+/**
+ * Build the one Better Auth instance for the current SQLite handle.
+ * Secrets and hostnames are configuration, never source-controlled values.
+ * Better Auth resolves the request-specific base URL only from this explicit
+ * allowlist; no arbitrary Host header is accepted.
+ */
+export function createAuth(config: AuthConfig = {}): BetterAuth {
+  const secret = config.secret ?? process.env.BETTER_AUTH_SECRET;
+  if (!secret) {
+    throw new Error("BETTER_AUTH_SECRET is required; configure it in the environment");
   }
-  return out;
-}
 
-function readToken(req: http.IncomingMessage): string | null {
-  return parseCookies(req.headers.cookie)[SESSION_COOKIE] ?? null;
-}
+  const allowedHosts = config.allowedHosts ?? parseList(process.env.BETTER_AUTH_ALLOWED_HOSTS);
+  if (allowedHosts.length === 0) {
+    throw new Error("BETTER_AUTH_ALLOWED_HOSTS is required; configure exact and preview host patterns");
+  }
+  rejectCatchAll("BETTER_AUTH_ALLOWED_HOSTS", allowedHosts);
 
-/** Should the session cookie be marked Secure? Only when TLS is terminated. */
-export function secure(): boolean {
-  return process.env.TRUST_TLS === "1";
-}
-
-/** Builds the session `Set-Cookie` header value for the given raw token. */
-export function sessionCookie(token: string): string {
-  const parts = [
-    `${SESSION_COOKIE}=${token}`,
-    "Path=/",
-    "HttpOnly",
-    "SameSite=Lax",
-    ...(secure() ? ["Secure"] : []),
-  ];
-  return parts.join("; ");
-}
-
-function setCookie(res: http.ServerResponse, token: string): void {
-  const parts = [
-    `${SESSION_COOKIE}=${token}`,
-    "Path=/",
-    "HttpOnly",
-    "SameSite=Lax",
-    ...(secure() ? ["Secure"] : []),
-  ];
-  res.setHeader("Set-Cookie", parts.join("; "));
-}
-
-function clearCookie(res: http.ServerResponse): void {
-  res.setHeader(
-    "Set-Cookie",
-    `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
+  const trustedOrigins = parseList(process.env.BETTER_AUTH_TRUSTED_ORIGINS);
+  rejectCatchAll("BETTER_AUTH_TRUSTED_ORIGINS", trustedOrigins);
+  const trustedProxyHeaders = config.trustedProxyHeaders ?? process.env.BETTER_AUTH_TRUSTED_PROXY_HEADERS === "1";
+  const useSecureCookies = config.useSecureCookies ?? (
+    process.env.NODE_ENV === "production" || process.env.BETTER_AUTH_USE_SECURE_COOKIES === "1"
   );
+
+  const options: BetterAuthOptions = {
+    appName: "qc-cyoa",
+    database: getDb(),
+    baseURL: {
+      allowedHosts,
+      protocol: config.protocol ?? "auto",
+    },
+    basePath: "/api/auth",
+    secret,
+    ...(trustedOrigins.length > 0 ? { trustedOrigins } : {}),
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 8,
+      maxPasswordLength: 128,
+      autoSignIn: true,
+    },
+    session: {
+      expiresIn: SESSION_TTL_SECONDS,
+      updateAge: SESSION_UPDATE_AGE_SECONDS,
+    },
+    // Local HTTP remains usable; production HTTPS or an explicitly TLS-
+    // terminated deployment receives Secure cookies.
+    advanced: {
+      trustedProxyHeaders,
+      useSecureCookies,
+    },
+  };
+  return betterAuth(options);
 }
 
-function tokenHash(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
+/** Ensure Better Auth's durable schema exists on the already-open SQLite DB. */
+export async function migrateAuthSchema(auth: BetterAuth): Promise<void> {
+  const migrations = await getMigrations(auth.options);
+  await migrations.runMigrations();
 }
 
-/** Temporary username/password auth backed by the SQLite `users`/`sessions` tables. */
-export class PasswordAuthService implements AuthService {
-  async signup(username: string, password: string): Promise<User> {
-    const norm = normalizeUsername(username);
-    const pwErr = validatePassword(password);
-    if (pwErr) throw new AuthError(400, pwErr);
-    if (!norm) throw new AuthError(400, "username is required");
+export class BetterAuthService implements AuthService {
+  constructor(public readonly auth: BetterAuth) {}
 
-    const db = getDb();
-    const existing = db.prepare("SELECT id FROM users WHERE username = ?").get(norm) as
-      | { id: string }
-      | undefined;
-    if (existing) throw new AuthError(409, "username already taken");
-
-    const id = crypto.randomUUID();
-    const now = Date.now();
-    db.prepare("INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)").run(
-      id,
-      norm,
-      hashPassword(password),
-      now,
-    );
-    return { id, username: norm };
+  signUpEmail(req: http.IncomingMessage, body: SignupInput): Promise<Response> {
+    return this.auth.api.signUpEmail({
+      body,
+      headers: fromNodeHeaders(req.headers),
+      asResponse: true,
+    });
   }
 
-  async login(username: string, password: string): Promise<User> {
-    const norm = normalizeUsername(username);
-    if (!norm) return Promise.reject(new AuthError(400, "username is required"));
-
-    const db = getDb();
-    const row = db.prepare("SELECT id, username, password_hash FROM users WHERE username = ?").get(norm) as
-      | UserRow
-      | undefined;
-    if (!row || !verifyPassword(password, row.password_hash)) {
-      throw new AuthError(401, "invalid username or password");
-    }
-    return { id: row.id, username: row.username };
+  signInEmail(req: http.IncomingMessage, body: SigninInput): Promise<Response> {
+    return this.auth.api.signInEmail({
+      body,
+      headers: fromNodeHeaders(req.headers),
+      asResponse: true,
+    });
   }
 
-  async logout(_req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-    clearCookie(res);
+  signOut(req: http.IncomingMessage): Promise<Response> {
+    return this.auth.api.signOut({
+      headers: fromNodeHeaders(req.headers),
+      asResponse: true,
+    });
+  }
+
+  sessionResponse(req: http.IncomingMessage): Promise<Response> {
+    return this.auth.api.getSession({
+      headers: fromNodeHeaders(req.headers),
+      asResponse: true,
+    });
   }
 
   async currentUser(req: http.IncomingMessage): Promise<User | null> {
-    const token = readToken(req);
-    if (!token) return null;
-    const db = getDb();
-    const row = db
-      .prepare(
-        `SELECT s.user_id AS user_id, u.username AS username
-         FROM sessions s JOIN users u ON u.id = s.user_id
-         WHERE s.token_hash = ? AND s.expires_at > ?`,
-      )
-      .get(tokenHash(token), Date.now()) as { user_id: string; username: string } | undefined;
-    if (!row) return null;
-    return { id: row.user_id, username: row.username };
-  }
-
-  /** Create a session row for the given user; returns the browser token. */
-  createSession(userId: string): string {
-    const token = crypto.randomBytes(32).toString("base64url");
-    const db = getDb();
-    db.prepare(
-      "INSERT INTO sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
-    ).run(crypto.randomUUID(), userId, tokenHash(token), Date.now() + SESSION_TTL_MS);
-    return token;
+    const session = await this.auth.api.getSession({
+      headers: fromNodeHeaders(req.headers),
+      query: { disableCookieCache: true },
+    });
+    if (!session) return null;
+    return {
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+    };
   }
 }
 
-export class AuthError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = "AuthError";
+function parseList(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return [
+    ...new Set(
+      raw
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter((origin) => origin.length > 0),
+    ),
+  ];
+}
+
+function rejectCatchAll(setting: string, values: string[]): void {
+  if (values.some((value) => value === "*" || value === "*:*" || value === "http://*" || value === "https://*")) {
+    throw new Error(`${setting} must not contain a catch-all wildcard`);
   }
 }
