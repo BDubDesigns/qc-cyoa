@@ -44,3 +44,22 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      - name: Production smoke (start serves API + dist on one port)
+        run: |
+          export BETTER_AUTH_SECRET="ci-smoke-secret-012345678901234567890123456789"
+          export BETTER_AUTH_ALLOWED_HOSTS="localhost:*"
+          export PORT=18787
+          (pnpm start > /tmp/qc-cyoa-start.log 2>&1 &) 
+          for i in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:18787/api/health" >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -fsS "http://127.0.0.1:18787/api/health" | grep -q '"ok":true'
+          curl -fsS "http://127.0.0.1:18787/" | grep -q 'id="root"'
+          curl -fsS "http://127.0.0.1:18787/projects" | grep -q 'id="root"'
+          # Unknown API paths stay API-JSON, never the SPA.
+          STATUS=$(curl -s -o /tmp/qc-cyoa-404.json -w "%{http_code}" "http://127.0.0.1:18787/api/definitely-missing")
+          test "$STATUS" = "404"
+          grep -q '"error"' /tmp/qc-cyoa-404.json
+          pkill -f "tsx server/index.ts" || true

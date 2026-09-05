@@ -83,7 +83,11 @@ pnpm run dev            # open http://localhost:5173
 pnpm test               # run the full test suite (Vitest)
 pnpm run typecheck      # strict TS check for src + server
 pnpm run build          # production build to ./dist
+pnpm start              # one-process production: API + dist/ on one port
 ```
+
+Production deploys (Coolify, persistent `/data`, PR previews) are covered by
+the concise contract in [`docs/deployment.md`](docs/deployment.md).
 
 ## Current creator workflow (Slice 0)
 
