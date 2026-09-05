@@ -1,9 +1,9 @@
 /**
  * SQLite storage via Node's built-in `node:sqlite` (DatabaseSync).
  *
- * Deliberately dependency-free: no Drizzle/better-sqlite3. Node 22 ships a
- * synchronous SQLite driver, which is enough for this MVP and swaps cleanly to
- * an ORM / Postgres later without touching studio or game code.
+ * Application data stays dependency-free: no Drizzle/better-sqlite3. Node 22
+ * ships a synchronous SQLite driver, while Better Auth owns its own durable
+ * auth tables through the same DatabaseSync connection.
  *
  * The file path is configurable so tests can point at a temp/in-memory DB.
  * WAL mode is enabled for concurrent reads during dev.
@@ -39,6 +39,7 @@ export function openDb(opts: DbPaths): DatabaseSync {
   const database = new DatabaseSyncCtor(opts.file);
   database.exec("PRAGMA journal_mode = WAL;");
   database.exec("PRAGMA foreign_keys = ON;");
+  rejectTemporaryAuthSchema(database);
   migrate(database);
   db = database;
   return database;
@@ -60,23 +61,9 @@ export function getDb(): DatabaseSync {
 
 function migrate(database: DatabaseSync): void {
   database.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id            TEXT PRIMARY KEY,
-      username      TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      created_at    INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS sessions (
-      id         TEXT PRIMARY KEY,
-      user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      token_hash TEXT NOT NULL,
-      expires_at INTEGER NOT NULL
-    );
-
     CREATE TABLE IF NOT EXISTS games (
       id           TEXT PRIMARY KEY,
-      author_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      author_id    TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
       title        TEXT NOT NULL,
       description  TEXT NOT NULL DEFAULT '',
       tags         TEXT NOT NULL DEFAULT '[]',
@@ -88,11 +75,9 @@ function migrate(database: DatabaseSync): void {
 
     CREATE INDEX IF NOT EXISTS idx_games_author ON games(author_id);
     CREATE INDEX IF NOT EXISTS idx_games_published ON games(is_published);
-    CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
-
     CREATE TABLE IF NOT EXISTS projects (
       id          TEXT PRIMARY KEY,
-      owner_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      owner_id    TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
       title       TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
       created_at  INTEGER NOT NULL,
@@ -144,19 +129,21 @@ function migrate(database: DatabaseSync): void {
   `);
 }
 
-/** Row shapes mirroring the schema above (snake_case = raw DB columns). */
-export interface UserRow {
-  id: string;
-  username: string;
-  password_hash: string;
-  created_at: number;
-}
-
-export interface SessionRow {
-  id: string;
-  user_id: string;
-  token_hash: string;
-  expires_at: number;
+/**
+ * Issue 10 is an intentional pre-production reset. Refuse to run against the
+ * old plural auth tables instead of leaving two identity domains or allowing
+ * new Better Auth users to collide with old project foreign keys. The caller
+ * can delete the disposable SQLite file and start again.
+ */
+function rejectTemporaryAuthSchema(database: DatabaseSync): void {
+  const rows = database
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'sessions')")
+    .all() as Array<{ name: string }>;
+  if (rows.length > 0) {
+    throw new Error(
+      "temporary auth schema detected; delete the disposable DB_FILE and restart for Better Auth",
+    );
+  }
 }
 
 export interface GameRow {
@@ -218,4 +205,3 @@ export interface AssetVariantRow {
   created_at: number;
   updated_at: number;
 }
-

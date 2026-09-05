@@ -1,105 +1,61 @@
 /**
- * API integration tests: exercise the real auth + games handlers over HTTP
- * against an isolated temp SQLite DB. The router/listener in server/index.ts is
- * NOT used (it binds a port); the same handlers are wired into a throwaway
- * http server here.
+ * API integration tests: exercise the real production app over HTTP against an
+ * isolated temp SQLite DB.
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import { describe, it, expect, afterAll, beforeEach } from "vitest";
 import * as http from "node:http";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { openDb, closeDb } from "../server/db";
-import { PasswordAuthService, AuthError } from "../server/auth-service";
-import { authRoutes } from "../server/routes/auth";
-import { gameRoutes, requireUser } from "../server/routes/games";
-import { readJsonBody, writeError, writeJson, HttpError } from "../server/routes/json";
+import { BetterAuthService, createAuth, migrateAuthSchema } from "../server/auth-service";
+import { createApp } from "../server/app";
 import { inspectGame } from "../src/core/validate";
 import type { GameDefinition } from "../src/core/types";
 
-let server: http.Server;
-let baseUrl: string;
+let server: http.Server | undefined;
+let baseUrl = "";
+let dbFile = "";
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cyoa-test-"));
+const TEST_SECRET = "test-secret-for-better-auth-012345678901234567890123456789";
+const TEST_ALLOWED_HOSTS = ["localhost:*", "127.0.0.1:*", "qc-cyoa.example.com", "*.preview.qc-cyoa.example.com"];
 
-beforeAll(() => {
-  server = http.createServer(async (req, res) => {
-    try {
-      const url = new URL(req.url ?? "/", `http://localhost`);
-      const segs = url.pathname.split("/").filter(Boolean);
-      const auth = new PasswordAuthService();
-      const Auth = authRoutes(auth);
-      const Games = gameRoutes();
+async function stopServer(): Promise<void> {
+  if (!server) return;
+  await new Promise<void>((resolve, reject) => server!.close((err) => (err ? reject(err) : resolve())));
+  server = undefined;
+}
 
-      if (req.method === "POST" && segs[0] === "api" && segs[1] === "auth") {
-        const a = segs[2];
-        const body = asJson(await readJsonBody(req));
-        if (a === "signup") return await Auth.signup(req, res, body);
-        if (a === "login") return await Auth.login(req, res, body);
-        if (a === "logout") return Auth.logout(req, res);
-      }
-      if (req.method === "GET" && segs[0] === "api" && segs[1] === "auth" && segs[2] === "session") {
-        return await Auth.session(req, res);
-      }
-      if (segs[0] === "api" && segs[1] === "me" && segs[2] === "games") {
-        const user = await requireUser(auth, req);
-        return Games.mine(req, res, user);
-      }
-      if (segs[0] === "api" && segs[1] === "games") {
-        const id = segs[2];
-        if (id === undefined) {
-          if (req.method === "GET") return Games.list(req, res);
-          if (req.method === "POST") {
-            const user = await requireUser(auth, req);
-            return await Games.create(req, res, user, asJson(await readJsonBody(req)));
-          }
-          throw new HttpError(404, "not found");
-        }
-        if (req.method === "GET") return Games.get(req, res, await auth.currentUser(req), id);
-        if (req.method === "POST" && segs[3] === "publish") {
-          const user = await requireUser(auth, req);
-          return Games.publish(req, res, user, id);
-        }
-        if (req.method === "PUT") {
-          const user = await requireUser(auth, req);
-          return await Games.update(req, res, user, id, asJson(await readJsonBody(req)));
-        }
-        if (req.method === "DELETE") {
-          const user = await requireUser(auth, req);
-          return Games.remove(req, res, user, id);
-        }
-      }
-      throw new HttpError(404, "not found");
-    } catch (err) {
-      if (err instanceof HttpError) return writeError(res, err.status, err.message);
-      if (err instanceof AuthError) return writeError(res, err.status, err.message);
-      console.error(err);
-      return writeError(res, 500, "internal error");
-    }
+async function startServer(): Promise<void> {
+  const auth = createAuth({
+    allowedHosts: TEST_ALLOWED_HOSTS,
+    secret: TEST_SECRET,
+    trustedProxyHeaders: true,
   });
-
-  return new Promise<void>((resolve) => {
-    server.listen(0, "127.0.0.1", () => {
-      const addr = server.address() as { port: number };
+  await migrateAuthSchema(auth);
+  server = createApp(new BetterAuthService(auth));
+  await new Promise<void>((resolve) => {
+    server!.listen(0, "127.0.0.1", () => {
+      const addr = server!.address() as { port: number };
       baseUrl = `http://127.0.0.1:${addr.port}`;
       resolve();
     });
   });
+}
+
+beforeEach(async () => {
+  await stopServer();
+  closeDb();
+  dbFile = path.join(tmpDir, `db-${Date.now()}-${Math.random()}.sqlite`);
+  openDb({ file: dbFile });
+  await startServer();
 });
 
-afterAll(() => {
-  server.close();
+afterAll(async () => {
+  await stopServer();
   closeDb();
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
-
-beforeEach(() => {
-  closeDb();
-  openDb({ file: path.join(tmpDir, `db-${Date.now()}-${Math.random()}.sqlite`) });
-});
-
-function asJson(v: unknown) {
-  return (v as Record<string, unknown> | null) ?? null;
-}
 
 function cookieFrom(res: Response): string | null {
   const setCookie = res.headers.get("set-cookie");
@@ -107,13 +63,16 @@ function cookieFrom(res: Response): string | null {
   return setCookie.split(";")[0]!;
 }
 
-async function signup(username: string, password: string): Promise<string> {
-  const res = await fetch(`${baseUrl}/api/auth/signup`, {
+async function signup(localPart: string, password: string, name = localPart): Promise<string> {
+  const res = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ email: `${localPart}@example.com`, password, name }),
   });
-  expect(res.status).toBe(201);
+  expect(res.status).toBe(200);
+  const data = (await res.json()) as { token?: unknown; user: { email: string; name: string } };
+  expect(data.token).toBeUndefined();
+  expect(data.user.email).toBe(`${localPart}@example.com`);
   return cookieFrom(res)!;
 }
 
@@ -129,39 +88,109 @@ function validGame(): GameDefinition {
 }
 
 describe("auth", () => {
-  it("signup then session round-trip", async () => {
-    const cookie = await signup("bob", "secret123");
-    const res = await fetch(`${baseUrl}/api/auth/session`, { headers: { Cookie: cookie } });
-    expect(res.status).toBe(200);
-    const data = (await res.json()) as { user: { username: string } };
-    expect(data.user.username).toBe("bob");
+  it("accepts localhost, the approved production host, and approved preview hosts only", async () => {
+    const cases: Array<{ localPart: string; headers: Record<string, string> }> = [
+      { localPart: "local-host", headers: { Host: "localhost:5173" } },
+      {
+        localPart: "prod-host",
+        headers: { Host: "127.0.0.1", "X-Forwarded-Host": "qc-cyoa.example.com", "X-Forwarded-Proto": "https" },
+      },
+      {
+        localPart: "preview-host",
+        headers: {
+          Host: "127.0.0.1",
+          "X-Forwarded-Host": "12.preview.qc-cyoa.example.com",
+          "X-Forwarded-Proto": "https",
+        },
+      },
+    ];
+
+    for (const { localPart, headers } of cases) {
+      const res = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({ email: `${localPart}@example.com`, password: "secret123", name: localPart }),
+      });
+      expect(res.status).toBe(200);
+      expect(res.headers.get("set-cookie")).toMatch(/HttpOnly/i);
+      expect(res.headers.get("set-cookie")).not.toMatch(/Domain=/i);
+    }
+
+    const rejected = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Host: "127.0.0.1",
+        "X-Forwarded-Host": "unapproved.example.com",
+        "X-Forwarded-Proto": "https",
+      },
+      body: JSON.stringify({ email: "unapproved@example.com", password: "secret123", name: "Unapproved" }),
+    });
+    expect(rejected.status).toBeGreaterThanOrEqual(400);
+    expect(rejected.status).toBeLessThan(500);
+    expect(await rejected.json()).toEqual({ error: "auth request rejected" });
   });
 
-  it("rejects duplicate usernames and short passwords", async () => {
-    await signup("carol", "secret123");
-    const dup = await fetch(`${baseUrl}/api/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "carol", password: "secret123" }),
-    });
-    expect(dup.status).toBe(409);
+  it("signup then session round-trip", async () => {
+    const cookie = await signup("bob", "secret123", "Bob Werner");
+    const res = await fetch(`${baseUrl}/api/auth/get-session`, { headers: { Cookie: cookie } });
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { user: { email: string; name: string }; session?: unknown };
+    expect(data.user.email).toBe("bob@example.com");
+    expect(data.user.name).toBe("Bob Werner");
+    expect(data.session).toBeUndefined();
+  });
 
-    const short = await fetch(`${baseUrl}/api/auth/signup`, {
+  it("rejects duplicate emails and short passwords", async () => {
+    await signup("carol", "secret123");
+    const dup = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "dave", password: "short" }),
+      body: JSON.stringify({ email: "carol@example.com", password: "secret123", name: "Carol" }),
+    });
+    expect(dup.status).toBe(422);
+
+    const short = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "dave@example.com", password: "short", name: "Dave" }),
     });
     expect(short.status).toBe(400);
   });
 
   it("login with wrong password is 401", async () => {
     await signup("erin", "secret123");
-    const res = await fetch(`${baseUrl}/api/auth/login`, {
+    const res = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "erin", password: "wrongpass" }),
+      body: JSON.stringify({ email: "erin@example.com", password: "wrongpass" }),
     });
     expect(res.status).toBe(401);
+  });
+
+  it("sign-out invalidates the durable session", async () => {
+    const cookie = await signup("frida", "secret123");
+    const logout = await fetch(`${baseUrl}/api/auth/sign-out`, {
+      method: "POST",
+      headers: { Cookie: cookie },
+    });
+    expect(logout.status).toBe(200);
+
+    const session = await fetch(`${baseUrl}/api/auth/get-session`, { headers: { Cookie: cookie } });
+    expect(session.status).toBe(401);
+  });
+
+  it("keeps the session valid after reopening the SQLite database", async () => {
+    const cookie = await signup("grace", "secret123");
+    await stopServer();
+    closeDb();
+    openDb({ file: dbFile });
+    await startServer();
+
+    const session = await fetch(`${baseUrl}/api/auth/get-session`, { headers: { Cookie: cookie } });
+    expect(session.status).toBe(200);
+    const data = (await session.json()) as { user: { email: string } };
+    expect(data.user.email).toBe("grace@example.com");
   });
 });
 
