@@ -68,14 +68,23 @@ BETTER_AUTH_ALLOWED_HOSTS="<prod-host>,*.<preview-host-suffix>"
   execution **disabled**.
 - URL template uses the PR id (platform placeholder, e.g. `{{pr_id}}`):
   `<pr_id>.<preview-suffix>` resolving via the wildcard DNS record.
-- Per-preview environment (never production values):
-  - own `BETTER_AUTH_SECRET`,
-  - own `BETTER_AUTH_ALLOWED_HOSTS` entry for that preview host (or the
-    shared `*.<preview-suffix>` pattern),
-  - own disposable/isolated storage (`DB_FILE` + `ASSET_DIR` must not point
-    at `/data` production paths),
-  - **`IMAGE_PROVIDER=mock`** — previews never receive production
-    Singularity/image-generation credentials.
+- Previews use the **same** in-container paths as production:
+  `DB_FILE=/data/qc-cyoa.sqlite`, `ASSET_DIR=/data/assets`. Isolation comes
+  from Coolify's persistent volume behavior, not from different paths.
+- On the `/data` volume mount, keep Coolify's **Add suffix for PR
+  deployments** option enabled. Coolify then creates separate preview volumes
+  with a `-pr-N` suffix, so each preview gets isolated storage while mounting
+  it at the same `/data` destination. Do **not** disable this option —
+  sharing the production volume with a preview would let PR code/data affect
+  production.
+- Auth secrets: production uses its own `BETTER_AUTH_SECRET`. Previews may
+  share one separate preview-only `BETTER_AUTH_SECRET` — there is no
+  requirement to generate a different secret per PR. Production secrets must
+  never be exposed to previews.
+- Each preview needs its own `BETTER_AUTH_ALLOWED_HOSTS` entry for that
+  preview host (or the shared `*.<preview-suffix>` pattern).
+- **`IMAGE_PROVIDER=mock`** on previews — they never receive production
+  Singularity/image-generation credentials.
 - Closing/merging the PR must stop/remove the preview; preview deletion must
   never touch production data.
 
