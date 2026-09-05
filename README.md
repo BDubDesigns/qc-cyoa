@@ -83,7 +83,11 @@ pnpm run dev            # open http://localhost:5173
 pnpm test               # run the full test suite (Vitest)
 pnpm run typecheck      # strict TS check for src + server
 pnpm run build          # production build to ./dist
+pnpm start              # one-process production: API + dist/ on one port
 ```
+
+Production deploys (Coolify, persistent `/data`, PR previews) are covered by
+the concise contract in [`docs/deployment.md`](docs/deployment.md).
 
 ## Current creator workflow (Slice 0)
 
@@ -127,8 +131,8 @@ is not directly reachable. Better Auth then resolves each request from the
 approved host pattern and the proxy's HTTPS protocol. Keep
 `crossSubDomainCookies` disabled (the default): cookies have no `Domain`
 attribute, so localhost, production, and every preview keep independent
-sessions. Give each preview its own `BETTER_AUTH_SECRET` and disposable
-`DB_FILE`; it must not read production secrets or data.
+sessions. Previews may share one separate preview-only `BETTER_AUTH_SECRET`
+(no per-PR secret required); they must never read production secrets or data.
 
 This multi-host setup intentionally uses Better Auth's dynamic
 `baseURL.allowedHosts` configuration and fails closed for an unapproved host;

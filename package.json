@@ -4,22 +4,26 @@
   "description": "A TypeScript framework for building choose-your-own-adventure games with rooms, inventory items, persistent/consumable items, and a backtracking map.",
   "type": "module",
   "packageManager": "pnpm@10.33.3",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "dev:api": "tsx server/index.ts",
     "build": "tsc && vite build",
+    "start": "NODE_ENV=production tsx server/index.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p server/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest"
   },
+  "dependencies": {
+    "better-auth": "^1.7.2",
+    "tsx": "^4.23.12"
+  },
   "devDependencies": {
     "@types/node": "^22.20.1",
-    "tsx": "^4.23.12",
     "typescript": "^5.5.4",
     "vite": "^5.4.2",
     "vitest": "^2.1.9"
-  },
-  "dependencies": {
-    "better-auth": "^1.7.2"
   }
 }

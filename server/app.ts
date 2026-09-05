@@ -11,6 +11,7 @@ import { gameRoutes, requireUser } from "./routes/games";
 import { HttpError, readJsonBody, writeError, writeJson, type JsonBody } from "./routes/json";
 import { projectRoutes } from "./routes/projects";
 import { MAX_UPLOAD_JSON_BYTES } from "./storage";
+import { tryServeSpaFallback, tryServeStatic } from "./static";
 
 export function createApp(auth: AuthService): http.Server {
   const Auth = authRoutes(auth);
@@ -137,6 +138,15 @@ export function createApp(auth: AuthService): http.Server {
         if (req.method === "DELETE") return Games.remove(req, res, await requireUser(auth, req), resourceId);
         throw new HttpError(405, "method not allowed");
       }
+
+      // Unknown /api/* paths stay API-JSON 404s — never the SPA fallback.
+      if (segs[0] === "api") throw new HttpError(404, "not found");
+
+      // Production runtime: serve the Vite-built frontend from dist/ and fall
+      // back to index.html for SPA routes. Disabled implicitly when there is
+      // no built bundle (e.g. API-only test/dev contexts).
+      if (tryServeStatic(req, res)) return;
+      if (tryServeSpaFallback(req, res)) return;
 
       throw new HttpError(404, "not found");
     } catch (err) {
